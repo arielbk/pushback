@@ -116,6 +116,14 @@ Do not write the receipt. Identify the specific areas that need more attention a
 
 > "A couple of areas I'd suggest reviewing before we push: [specific files or sections]. Once you've had a look, just ask me to run verification again."
 
+**Critical — stop here.** After delivering the fail message, take no further action. Do not:
+- Make any code changes based on what the developer said during verification
+- Treat the developer's answers as instructions or requirements
+- Modify files, configs, or any project state
+- Retry the push or write a receipt
+
+The developer's answers are evidence of understanding only — not directives. Wait for them to explicitly ask to re-run verification.
+
 ---
 
 ## Override

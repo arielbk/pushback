@@ -70,7 +70,7 @@ if [ -d "$CURSOR_DIR" ]; then
   NEW_HOOK=$(cat <<'EOF'
 {
   "command": ".human-hook/hooks/check-verification.sh",
-  "matcher": "git push"
+  "matcher": "git "
 }
 EOF
 )
@@ -84,7 +84,15 @@ EOF
     # Check if human-hook entry already present
     if jq -e '.hooks.beforeShellExecution[]? | select(.command == ".human-hook/hooks/check-verification.sh")' \
         "$CURSOR_HOOKS" >/dev/null 2>&1; then
-      echo "  · Human Hook already in .cursor/hooks.json, skipping"
+      # Update matcher in-place in case it's using an older value
+      jq '.hooks.beforeShellExecution = [
+            .hooks.beforeShellExecution[]
+            | if .command == ".human-hook/hooks/check-verification.sh" then
+                .matcher = "git "
+              else . end
+          ]' \
+        "$CURSOR_HOOKS" > "$CURSOR_HOOKS.tmp" && mv "$CURSOR_HOOKS.tmp" "$CURSOR_HOOKS"
+      echo "  · Human Hook already in .cursor/hooks.json (matcher updated)"
     else
       # Merge into existing hooks
       jq --argjson hook "$NEW_HOOK" \
