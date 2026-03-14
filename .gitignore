@@ -1,0 +1,5 @@
+# Editor / AI tool local files
+.cursor/
+.claude/
+.agents/
+skills-lock.json
