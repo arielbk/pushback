@@ -1,40 +1,96 @@
 # Human Hook
 
-![Human Hook](assets/logo.png)
+**You ship code you understand. Your team knows it.**
 
-A skill + hook system that verifies developer understanding before AI-generated code leaves their machine.
+AI agents write code fast. That's the easy part. The hard part is making sure the person pushing that code actually understands what they're pushing. Not line-by-line — architecturally. The *what*, the *why*, and the *what could go wrong*.
 
-AI coding agents write and commit code fast. Human Hook adds one intentional checkpoint: before `git push`, it asks the developer 2–3 questions about the outgoing changes — architectural intent, integration points, trade-offs — and only allows the push if they can demonstrate genuine understanding. No checkbox, no quiz. A short conversation.
+Human Hook adds one checkpoint before `git push`: a short conversation. The agent reads your outgoing diff, asks you 2-3 targeted questions, and only lets the push through if you demonstrate genuine understanding. No quiz. No checkbox. A real conversation that takes under two minutes.
 
-## How it works
+This is opinionated, and that's the point. It adds friction — but it puts you in the driver's seat. You're the architect. The agent handles implementation. Human Hook makes sure you stay engaged with what's being built.
 
-```
-Developer says "push" →
-  Editor hook fires →
-    check-verification.sh checks for a valid receipt →
-      No receipt? Hook blocks, agent starts verification conversation →
-        Developer answers questions →
-          Pass → receipt written → push retried and allowed
-          Fail → agent explains gaps → developer reviews and retries
-```
+For teams, it goes further. Every verified push carries a cryptographic receipt. A GitHub Action checks for it on pull requests. Your team can see, at a glance, that the author understood what they shipped. Not because they said so — because they proved it.
 
-The verification receipt is a SHA-256 hash of the outgoing diff. If new commits are made after verification, the hash no longer matches and re-verification is required.
-
-## Installation
-
-### 1. Install the skill
+## Install
 
 ```bash
 npx skills add arielbk/human-hook
 ```
 
-This installs the skill into your editor's skills directory. The skill handles the rest — on first use it detects your editor (Cursor, Claude Code, or both) and runs setup automatically.
+That's it. On first use, the skill detects your editor (Cursor, Claude Code, or both), installs the hooks, writes a default config, and sets up a GitHub Action workflow for your PRs. From that point on, every `git push` through the agent is gated.
 
-### 2. That's it
+## How it works
 
-Tell the agent to push. If setup hasn't run yet, the skill will run it. The hook gets installed, and from that point on every `git push` through the agent is gated.
+```
+You say "push"
+  → Editor hook checks for a valid verification receipt
+    → No receipt? Push blocked. Agent starts a conversation.
+      → You answer 2-3 questions about your changes
+        → Pass → receipt written → push goes through
+        → Fail → agent points you to what to review
+```
 
-**To skip verification for a single push** (emergencies only):
+The receipt is a SHA-256 hash of your outgoing diff. Make new commits after verification? The hash changes. Re-verification required. The system is self-invalidating — you can't verify once and keep pushing different code.
+
+### What you get asked
+
+Questions come from the actual diff — not generic prompts. They target three areas:
+
+- **Architectural intent** — Why does this change exist? Why this approach?
+- **Integration awareness** — What does this touch? What else is affected?
+- **Trade-off consciousness** — What could go wrong? What are the implications?
+
+Honest gaps with self-awareness are fine. The goal is genuine engagement, not perfection. See [`verification-guide.md`](skill/references/verification-guide.md) for detailed criteria.
+
+## For teams: CI verification
+
+When verification passes locally, Human Hook adds a `Human-Hook-Verified` trailer to the commit. The included GitHub Action checks for this on pull requests:
+
+```yaml
+# .github/workflows/human-hook.yml (auto-installed by setup)
+name: Human Hook Verification
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: arielbk/human-hook/action@main
+```
+
+The action reports which commits are verified and which aren't. Missing verification fails the check. Your team gets transparency without surveillance — every push represents understood code, not just agent output.
+
+| Input | Default | Description |
+|-------|---------|-------------|
+| `require-all-commits` | `false` | Require every commit to have a trailer (vs. just the last) |
+| `fail-on-missing` | `true` | Fail the check when verification is missing |
+
+## Configuration
+
+`.human-hook/config.json` lives in your project root. Commit it so the whole team shares the same settings.
+
+```json
+{
+  "triggers": ["push"],
+  "trivial_threshold": {
+    "max_lines": 5,
+    "ignore_patterns": ["*.lock", "*.lockb", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "*.generated.*"]
+  },
+  "override_env_var": "HUMAN_HOOK_OVERRIDE"
+}
+```
+
+| Field | Default | What it does |
+|-------|---------|-------------|
+| `triggers` | `["push"]` | Which git commands trigger verification. Add `"commit"` to also gate commits. |
+| `trivial_threshold.max_lines` | `5` | Changes below this skip verification automatically. |
+| `trivial_threshold.ignore_patterns` | lockfiles, generated | Files that are always considered trivial. |
+| `override_env_var` | `HUMAN_HOOK_OVERRIDE` | Env var that bypasses verification when set. |
+
+**Override** (emergencies only):
 
 ```bash
 HUMAN_HOOK_OVERRIDE=1 git push
@@ -42,50 +98,11 @@ HUMAN_HOOK_OVERRIDE=1 git push
 
 Or tell the agent: *"Use the override and push."*
 
-## Configuration
+## Why this exists
 
-After first use, `.human-hook/config.json` appears in your project. Commit it to share settings with your team.
+AI coding agents are transforming how software gets built. But speed without understanding creates a trust problem — especially on teams. It's too easy to tell the agent "do it," glance at the output, and push. The code might work, but does the developer know *why* it works?
 
-```json
-{
-  "triggers": ["push"],
-  "trivial_threshold": {
-    "max_lines": 5,
-    "ignore_patterns": [
-      "*.lock",
-      "*.lockb",
-      "package-lock.json",
-      "yarn.lock",
-      "pnpm-lock.yaml",
-      "*.generated.*"
-    ]
-  },
-  "override_env_var": "HUMAN_HOOK_OVERRIDE"
-}
-```
-
-| Field | Default | Description |
-|-------|---------|-------------|
-| `triggers` | `["push"]` | Commands that trigger verification. Add `"commit"` to also gate commits. |
-| `trivial_threshold.max_lines` | `5` | Changes below this line count skip verification. |
-| `trivial_threshold.ignore_patterns` | lockfiles, generated files | Files matching these patterns are always considered trivial. |
-| `override_env_var` | `HUMAN_HOOK_OVERRIDE` | Environment variable that bypasses verification when set. |
-
-See `skill/references/.human-hook.config.example.json` for a copy of the defaults.
-
-## What gets verified
-
-The agent evaluates understanding across three areas:
-
-- **Architectural intent** — Why does this change exist? Why this approach over alternatives?
-- **Integration awareness** — What other parts of the system does this touch? What consumers are affected?
-- **Trade-off consciousness** — What could go wrong? What are the performance, security, or maintainability implications?
-
-Questions are generated from the actual diff — not generic questions that could apply to any codebase.
-
-A pass requires demonstrating understanding across all three areas. Honest gaps with self-awareness are acceptable; the goal is genuine engagement, not perfection.
-
-See `skill/references/verification-guide.md` for detailed evaluation criteria and examples.
+Human Hook is built on a simple belief: **the thinking is the skill**. Models change. Tools change. The way you understand your own code — that compounds. This isn't about slowing you down. It's about making sure you're actually driving.
 
 ## Compatibility
 
@@ -93,24 +110,25 @@ See `skill/references/verification-guide.md` for detailed evaluation criteria an
 |--|--------|-------------|
 | Hook config | `.cursor/hooks.json` | `.claude/settings.json` |
 | Hook event | `beforeShellExecution` | `PreToolUse` (Bash) |
-| Input format | `{ "command": "..." }` | `{ "tool_input": { "command": "..." } }` |
 
-A single `SKILL.md` works in both editors without modification.
+A single skill definition works in both editors without modification.
 
 ## Repository structure
 
 ```
 human-hook/
-├── assets/
-│   └── logo.png
-├── docs/                             # PRD and technical spec
-├── README.md
-└── skill/                            # Everything bundled by npx skills add
-    ├── SKILL.md                      # Skill definition (Cursor + Claude Code)
+├── action/                              # GitHub Action for PR verification
+│   ├── action.yml
+│   ├── verify-pr.sh
+│   └── README.md
+├── docs/                                # PRD and technical spec
+└── skill/                               # Bundled by npx skills add
+    ├── SKILL.md                         # Agent instructions
     ├── scripts/
-    │   ├── setup.sh                  # Installs hooks for detected editors
-    │   └── check-verification.sh    # Hook script — receipt validation
+    │   ├── setup.sh                     # Auto-installs hooks + workflow
+    │   └── check-verification.sh        # Receipt validation
     └── references/
-        ├── verification-guide.md    # Evaluation criteria and examples
+        ├── verification-guide.md        # Evaluation criteria
+        ├── human-hook-workflow.yml      # GitHub Action template
         └── .human-hook.config.example.json
 ```
