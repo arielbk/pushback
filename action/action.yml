@@ -1,0 +1,25 @@
+name: 'Human Hook Verification'
+description: 'Verify that PR commits have been reviewed and understood by their authors via Human Hook'
+branding:
+  icon: 'shield'
+  color: 'green'
+inputs:
+  require-all-commits:
+    description: 'Require all commits to have verification trailers (vs just the last one)'
+    required: false
+    default: 'false'
+  fail-on-missing:
+    description: 'Fail the check if verification is missing'
+    required: false
+    default: 'true'
+runs:
+  using: 'composite'
+  steps:
+    - name: Verify Human Hook receipts
+      shell: bash
+      env:
+        REQUIRE_ALL: ${{ inputs.require-all-commits }}
+        FAIL_ON_MISSING: ${{ inputs.fail-on-missing }}
+        PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      run: ${{ github.action_path }}/verify-pr.sh

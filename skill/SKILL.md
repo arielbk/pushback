@@ -105,6 +105,16 @@ DEFAULT=$(git remote show origin | grep 'HEAD branch' | awk '{print $NF}')
 git diff "$DEFAULT"..HEAD | shasum -a 256 | awk '{print $1}' > .human-hook/verified
 ```
 
+Then add a verification trailer to the HEAD commit so the team can verify via CI. This is safe because the commit has not been pushed yet:
+
+```bash
+DIFF_HASH=$(cat .human-hook/verified)
+CURRENT_MSG=$(git log -1 --format='%B')
+if ! echo "$CURRENT_MSG" | grep -q "^Human-Hook-Verified:"; then
+  git commit --amend --no-edit --trailer "Human-Hook-Verified: $DIFF_HASH"
+fi
+```
+
 Tell the developer:
 > "You've demonstrated a solid understanding of these changes. Writing the verification receipt and retrying the push."
 
