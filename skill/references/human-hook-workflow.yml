@@ -1,0 +1,16 @@
+name: Human Hook Verification
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    name: Verify developer understanding
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: arielbk/human-hook/action@main

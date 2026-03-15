@@ -152,6 +152,22 @@ else
   echo "  · No .claude/ directory found, skipping Claude Code setup"
 fi
 
+# ── GitHub Action ──────────────────────────────────────────────────────────
+
+WORKFLOW_DIR="$REPO_ROOT/.github/workflows"
+WORKFLOW_FILE="$WORKFLOW_DIR/human-hook.yml"
+WORKFLOW_TEMPLATE="$SKILL_DIR/references/human-hook-workflow.yml"
+
+if [ -f "$WORKFLOW_FILE" ]; then
+  echo "  · .github/workflows/human-hook.yml already exists, skipping"
+elif [ -f "$WORKFLOW_TEMPLATE" ]; then
+  mkdir -p "$WORKFLOW_DIR"
+  cp "$WORKFLOW_TEMPLATE" "$WORKFLOW_FILE"
+  echo "  ✓ Installed GitHub Action workflow at .github/workflows/human-hook.yml"
+else
+  echo "  · Workflow template not found, skipping GitHub Action setup"
+fi
+
 # ── Done ───────────────────────────────────────────────────────────────────
 
 echo ""
@@ -160,6 +176,7 @@ echo ""
 echo "  Default trigger: git push"
 echo "  Config:          .human-hook/config.json"
 echo "  Receipt:         .human-hook/verified (gitignored)"
+echo "  CI workflow:     .github/workflows/human-hook.yml"
 echo ""
 echo "  To override verification for a single push:"
 echo "    HUMAN_HOOK_OVERRIDE=1 git push"
