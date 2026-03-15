@@ -4,20 +4,20 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOOK_SCRIPT_SRC="$SKILL_DIR/scripts/check-verification.sh"
-HUMAN_HOOK_DIR="$REPO_ROOT/.human-hook"
-HOOKS_DEST_DIR="$HUMAN_HOOK_DIR/hooks"
-CONFIG_FILE="$HUMAN_HOOK_DIR/config.json"
-RECEIPT_FILE="$HUMAN_HOOK_DIR/verified"
+PUSHBACK_DIR="$REPO_ROOT/.pushback"
+HOOKS_DEST_DIR="$PUSHBACK_DIR/hooks"
+CONFIG_FILE="$PUSHBACK_DIR/config.json"
+RECEIPT_FILE="$PUSHBACK_DIR/verified"
 GITIGNORE="$REPO_ROOT/.gitignore"
 
-echo "Human Hook: running setup..."
+echo "Pushback: running setup..."
 
-# ── Create .human-hook/ structure ──────────────────────────────────────────
+# ── Create .pushback/ structure ──────────────────────────────────────────
 
 mkdir -p "$HOOKS_DEST_DIR"
 cp "$HOOK_SCRIPT_SRC" "$HOOKS_DEST_DIR/check-verification.sh"
 chmod +x "$HOOKS_DEST_DIR/check-verification.sh"
-echo "  ✓ Hook script installed at .human-hook/hooks/check-verification.sh"
+echo "  ✓ Hook script installed at .pushback/hooks/check-verification.sh"
 
 # Write default config if not already present
 if [ ! -f "$CONFIG_FILE" ]; then
@@ -35,27 +35,27 @@ if [ ! -f "$CONFIG_FILE" ]; then
       "*.generated.*"
     ]
   },
-  "override_env_var": "HUMAN_HOOK_OVERRIDE"
+  "override_env_var": "PUSHBACK_OVERRIDE"
 }
 EOF
-  echo "  ✓ Created .human-hook/config.json with defaults"
+  echo "  ✓ Created .pushback/config.json with defaults"
 else
-  echo "  · .human-hook/config.json already exists, skipping"
+  echo "  · .pushback/config.json already exists, skipping"
 fi
 
 # Add receipt to .gitignore
 if [ -f "$GITIGNORE" ]; then
-  if ! grep -qF ".human-hook/verified" "$GITIGNORE"; then
+  if ! grep -qF ".pushback/verified" "$GITIGNORE"; then
     echo "" >> "$GITIGNORE"
-    echo "# Human Hook — local verification receipt" >> "$GITIGNORE"
-    echo ".human-hook/verified" >> "$GITIGNORE"
-    echo "  ✓ Added .human-hook/verified to .gitignore"
+    echo "# Pushback — local verification receipt" >> "$GITIGNORE"
+    echo ".pushback/verified" >> "$GITIGNORE"
+    echo "  ✓ Added .pushback/verified to .gitignore"
   else
-    echo "  · .human-hook/verified already in .gitignore, skipping"
+    echo "  · .pushback/verified already in .gitignore, skipping"
   fi
 else
-  printf "# Human Hook — local verification receipt\n.human-hook/verified\n" > "$GITIGNORE"
-  echo "  ✓ Created .gitignore with .human-hook/verified entry"
+  printf "# Pushback — local verification receipt\n.pushback/verified\n" > "$GITIGNORE"
+  echo "  ✓ Created .gitignore with .pushback/verified entry"
 fi
 
 # ── Cursor ─────────────────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ if [ -d "$CURSOR_DIR" ]; then
 
   NEW_HOOK=$(cat <<'EOF'
 {
-  "command": ".human-hook/hooks/check-verification.sh",
+  "command": ".pushback/hooks/check-verification.sh",
   "matcher": "git "
 }
 EOF
@@ -81,18 +81,18 @@ EOF
       > "$CURSOR_HOOKS"
     echo "  ✓ Created .cursor/hooks.json"
   else
-    # Check if human-hook entry already present
-    if jq -e '.hooks.beforeShellExecution[]? | select(.command == ".human-hook/hooks/check-verification.sh")' \
+    # Check if pushback entry already present
+    if jq -e '.hooks.beforeShellExecution[]? | select(.command == ".pushback/hooks/check-verification.sh")' \
         "$CURSOR_HOOKS" >/dev/null 2>&1; then
       # Update matcher in-place in case it's using an older value
       jq '.hooks.beforeShellExecution = [
             .hooks.beforeShellExecution[]
-            | if .command == ".human-hook/hooks/check-verification.sh" then
+            | if .command == ".pushback/hooks/check-verification.sh" then
                 .matcher = "git "
               else . end
           ]' \
         "$CURSOR_HOOKS" > "$CURSOR_HOOKS.tmp" && mv "$CURSOR_HOOKS.tmp" "$CURSOR_HOOKS"
-      echo "  · Human Hook already in .cursor/hooks.json (matcher updated)"
+      echo "  · Pushback already in .cursor/hooks.json (matcher updated)"
     else
       # Merge into existing hooks
       jq --argjson hook "$NEW_HOOK" \
@@ -117,7 +117,7 @@ if [ -d "$CLAUDE_DIR" ]; then
   NEW_HOOK=$(cat <<'EOF'
 {
   "type": "command",
-  "command": ".human-hook/hooks/check-verification.sh"
+  "command": ".pushback/hooks/check-verification.sh"
 }
 EOF
 )
@@ -128,9 +128,9 @@ EOF
       > "$CLAUDE_SETTINGS"
     echo "  ✓ Created .claude/settings.json"
   else
-    if jq -e '.hooks.PreToolUse[]?.hooks[]? | select(.command == ".human-hook/hooks/check-verification.sh")' \
+    if jq -e '.hooks.PreToolUse[]?.hooks[]? | select(.command == ".pushback/hooks/check-verification.sh")' \
         "$CLAUDE_SETTINGS" >/dev/null 2>&1; then
-      echo "  · Human Hook already in .claude/settings.json, skipping"
+      echo "  · Pushback already in .claude/settings.json, skipping"
     else
       # Merge: find the Bash PreToolUse group or create a new one
       jq --argjson hook "$NEW_HOOK" '
@@ -155,15 +155,15 @@ fi
 # ── GitHub Action ──────────────────────────────────────────────────────────
 
 WORKFLOW_DIR="$REPO_ROOT/.github/workflows"
-WORKFLOW_FILE="$WORKFLOW_DIR/human-hook.yml"
-WORKFLOW_TEMPLATE="$SKILL_DIR/references/human-hook-workflow.yml"
+WORKFLOW_FILE="$WORKFLOW_DIR/pushback.yml"
+WORKFLOW_TEMPLATE="$SKILL_DIR/references/pushback-workflow.yml"
 
 if [ -f "$WORKFLOW_FILE" ]; then
-  echo "  · .github/workflows/human-hook.yml already exists, skipping"
+  echo "  · .github/workflows/pushback.yml already exists, skipping"
 elif [ -f "$WORKFLOW_TEMPLATE" ]; then
   mkdir -p "$WORKFLOW_DIR"
   cp "$WORKFLOW_TEMPLATE" "$WORKFLOW_FILE"
-  echo "  ✓ Installed GitHub Action workflow at .github/workflows/human-hook.yml"
+  echo "  ✓ Installed GitHub Action workflow at .github/workflows/pushback.yml"
 else
   echo "  · Workflow template not found, skipping GitHub Action setup"
 fi
@@ -171,15 +171,15 @@ fi
 # ── Done ───────────────────────────────────────────────────────────────────
 
 echo ""
-echo "Human Hook setup complete."
+echo "Pushback setup complete."
 echo ""
 echo "  Default trigger: git push"
-echo "  Config:          .human-hook/config.json"
-echo "  Receipt:         .human-hook/verified (gitignored)"
-echo "  CI workflow:     .github/workflows/human-hook.yml"
+echo "  Config:          .pushback/config.json"
+echo "  Receipt:         .pushback/verified (gitignored)"
+echo "  CI workflow:     .github/workflows/pushback.yml"
 echo ""
 echo "  To override verification for a single push:"
-echo "    HUMAN_HOOK_OVERRIDE=1 git push"
+echo "    PUSHBACK_OVERRIDE=1 git push"
 echo ""
-echo "  To also gate git commit, edit .human-hook/config.json:"
+echo "  To also gate git commit, edit .pushback/config.json:"
 echo "    \"triggers\": [\"push\", \"commit\"]"

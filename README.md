@@ -1,19 +1,19 @@
-# Human Hook
+# Pushback
 
 **You ship code you understand. Your team knows it.**
 
 AI agents write code fast. That's the easy part. The hard part is making sure the person pushing that code actually understands what they're pushing. Not line-by-line — architecturally. The *what*, the *why*, and the *what could go wrong*.
 
-Human Hook adds one checkpoint before `git push`: a short conversation. The agent reads your outgoing diff, asks you 2-3 targeted questions, and only lets the push through if you demonstrate genuine understanding. No quiz. No checkbox. A real conversation that takes under two minutes.
+Pushback adds one checkpoint before `git push`: a short conversation. The agent reads your outgoing diff, asks you 2-3 targeted questions, and only lets the push through if you demonstrate genuine understanding. No quiz. No checkbox. A real conversation that takes under two minutes.
 
-This is opinionated, and that's the point. It adds friction — but it puts you in the driver's seat. You're the architect. The agent handles implementation. Human Hook makes sure you stay engaged with what's being built.
+This is opinionated, and that's the point. It adds friction — but it puts you in the driver's seat. You're the architect. The agent handles implementation. Pushback makes sure you stay engaged with what's being built.
 
 For teams, it goes further. Every verified push carries a cryptographic receipt. A GitHub Action checks for it on pull requests. Your team can see, at a glance, that the author understood what they shipped. Not because they said so — because they proved it.
 
 ## Install
 
 ```bash
-npx skills add arielbk/human-hook
+npx skills add arielbk/pushback
 ```
 
 That's it. On first use, the skill detects your editor (Cursor, Claude Code, or both), installs the hooks, writes a default config, and sets up a GitHub Action workflow for your PRs. From that point on, every `git push` through the agent is gated.
@@ -43,11 +43,11 @@ Honest gaps with self-awareness are fine. The goal is genuine engagement, not pe
 
 ## For teams: CI verification
 
-When verification passes locally, Human Hook adds a `Human-Hook-Verified` trailer to the commit. The included GitHub Action checks for this on pull requests:
+When verification passes locally, Pushback adds a `Pushback-Verified` trailer to the commit. The included GitHub Action checks for this on pull requests:
 
 ```yaml
-# .github/workflows/human-hook.yml (auto-installed by setup)
-name: Human Hook Verification
+# .github/workflows/pushback.yml (auto-installed by setup)
+name: Pushback Verification
 on:
   pull_request:
     branches: [main]
@@ -58,7 +58,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: arielbk/human-hook/action@main
+      - uses: arielbk/pushback/action@main
 ```
 
 The action reports which commits are verified and which aren't. Missing verification fails the check. Your team gets transparency without surveillance — every push represents understood code, not just agent output.
@@ -70,7 +70,7 @@ The action reports which commits are verified and which aren't. Missing verifica
 
 ## Configuration
 
-`.human-hook/config.json` lives in your project root. Commit it so the whole team shares the same settings.
+`.pushback/config.json` lives in your project root. Commit it so the whole team shares the same settings.
 
 ```json
 {
@@ -79,7 +79,7 @@ The action reports which commits are verified and which aren't. Missing verifica
     "max_lines": 5,
     "ignore_patterns": ["*.lock", "*.lockb", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "*.generated.*"]
   },
-  "override_env_var": "HUMAN_HOOK_OVERRIDE"
+  "override_env_var": "PUSHBACK_OVERRIDE"
 }
 ```
 
@@ -88,12 +88,12 @@ The action reports which commits are verified and which aren't. Missing verifica
 | `triggers` | `["push"]` | Which git commands trigger verification. Add `"commit"` to also gate commits. |
 | `trivial_threshold.max_lines` | `5` | Changes below this skip verification automatically. |
 | `trivial_threshold.ignore_patterns` | lockfiles, generated | Files that are always considered trivial. |
-| `override_env_var` | `HUMAN_HOOK_OVERRIDE` | Env var that bypasses verification when set. |
+| `override_env_var` | `PUSHBACK_OVERRIDE` | Env var that bypasses verification when set. |
 
 **Override** (emergencies only):
 
 ```bash
-HUMAN_HOOK_OVERRIDE=1 git push
+PUSHBACK_OVERRIDE=1 git push
 ```
 
 Or tell the agent: *"Use the override and push."*
@@ -102,7 +102,7 @@ Or tell the agent: *"Use the override and push."*
 
 AI coding agents are transforming how software gets built. But speed without understanding creates a trust problem — especially on teams. It's too easy to tell the agent "do it," glance at the output, and push. The code might work, but does the developer know *why* it works?
 
-Human Hook is built on a simple belief: **the thinking is the skill**. Models change. Tools change. The way you understand your own code — that compounds. This isn't about slowing you down. It's about making sure you're actually driving.
+Pushback is built on a simple belief: **the thinking is the skill**. Models change. Tools change. The way you understand your own code — that compounds. This isn't about slowing you down. It's about making sure you're actually driving.
 
 ## Compatibility
 
@@ -116,7 +116,7 @@ A single skill definition works in both editors without modification.
 ## Repository structure
 
 ```
-human-hook/
+pushback/
 ├── action/                              # GitHub Action for PR verification
 │   ├── action.yml
 │   ├── verify-pr.sh
@@ -129,6 +129,6 @@ human-hook/
     │   └── check-verification.sh        # Receipt validation
     └── references/
         ├── verification-guide.md        # Evaluation criteria
-        ├── human-hook-workflow.yml      # GitHub Action template
-        └── .human-hook.config.example.json
+        ├── pushback-workflow.yml      # GitHub Action template
+        └── .pushback.config.example.json
 ```

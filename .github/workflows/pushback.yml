@@ -1,4 +1,4 @@
-name: Human Hook Verification
+name: Pushback Verification
 
 on:
   pull_request:
@@ -13,7 +13,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: arielbk/human-hook/action@main
+      - uses: arielbk/pushback/action@main
         # with:
         #   require-all-commits: 'false'  # default: only last commit needs verification
         #   fail-on-missing: 'true'       # default: fail the check if missing

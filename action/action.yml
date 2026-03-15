@@ -1,5 +1,5 @@
-name: 'Human Hook Verification'
-description: 'Verify that PR commits have been reviewed and understood by their authors via Human Hook'
+name: 'Pushback Verification'
+description: 'Verify that PR commits have been reviewed and understood by their authors via Pushback'
 branding:
   icon: 'shield'
   color: 'green'
@@ -15,7 +15,7 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Verify Human Hook receipts
+    - name: Verify Pushback receipts
       shell: bash
       env:
         REQUIRE_ALL: ${{ inputs.require-all-commits }}

@@ -1,4 +1,4 @@
-# Human Hook — Product Requirements Document
+# Pushback — Product Requirements Document
 
 ## 1. Introduction / Overview
 
@@ -6,7 +6,7 @@ AI coding agents are transforming how software gets built. Developers increasing
 
 It's too easy to tell the agent "do it," glance at the output at 5pm, and push to production. The code might work, but the developer may not understand *why* it works, how it fits into the broader architecture, or what trade-offs were made. In digital agencies and collaborative teams, this erodes collective ownership and creates hidden knowledge gaps.
 
-**Human Hook** adds intentional friction to the development workflow. Before code leaves a developer's machine, it verifies — through a short, conversational check — that the developer understands what they're shipping. Not line-by-line code review, but architectural understanding: the *what*, the *why*, and the *how it connects*.
+**Pushback** adds intentional friction to the development workflow. Before code leaves a developer's machine, it verifies — through a short, conversational check — that the developer understands what they're shipping. Not line-by-line code review, but architectural understanding: the *what*, the *why*, and the *how it connects*.
 
 ## 2. Goals
 
@@ -29,7 +29,7 @@ It's too easy to tell the agent "do it," glance at the output at 5pm, and push t
 ### Tech Lead / Team Lead
 
 - As a tech lead, I want confidence that my team members understand the AI-generated code they're pushing, so that we maintain code quality and shared ownership.
-- As a tech lead, I want to install Human Hook across the team's project with a single setup step, so that adoption is frictionless.
+- As a tech lead, I want to install Pushback across the team's project with a single setup step, so that adoption is frictionless.
 - As a tech lead, I want to configure which actions trigger verification (commit, push, or both), so that I can calibrate the level of friction for my team.
 
 ### Team
@@ -53,7 +53,7 @@ It's too easy to tell the agent "do it," glance at the output at 5pm, and push t
 
 ### 4.2 Installation and Setup
 
-1. Human Hook must be installable as a single skill that works across both Cursor and Claude Code.
+1. Pushback must be installable as a single skill that works across both Cursor and Claude Code.
 2. On first use, the skill must automatically configure the necessary editor hooks (no manual hook setup required by the developer).
 3. The setup must detect which tools are present (Cursor, Claude Code, or both) and configure hooks accordingly.
 4. The setup must not overwrite existing hook configurations — it must merge its configuration alongside any hooks already in place.
@@ -108,15 +108,15 @@ It's too easy to tell the agent "do it," glance at the output at 5pm, and push t
 
 ### Competitive Context
 
-- **Gater.app** is the closest existing product. It generates quizzes from GitHub PRs to verify reviewer understanding before merge. Key differences from Human Hook:
-  - Gater operates at the PR level (post-push); Human Hook operates pre-push (shift-left).
-  - Gater uses multiple-choice quizzes; Human Hook uses open-ended conversation.
-  - Gater verifies the *reviewer*; Human Hook verifies the *author*.
-  - Gater requires a GitHub App + Chrome Extension; Human Hook lives inside the editor.
+- **Gater.app** is the closest existing product. It generates quizzes from GitHub PRs to verify reviewer understanding before merge. Key differences from Pushback:
+  - Gater operates at the PR level (post-push); Pushback operates pre-push (shift-left).
+  - Gater uses multiple-choice quizzes; Pushback uses open-ended conversation.
+  - Gater verifies the *reviewer*; Pushback verifies the *author*.
+  - Gater requires a GitHub App + Chrome Extension; Pushback lives inside the editor.
 
 ## 7. Success Metrics
 
-- **Adoption**: Number of projects / teams that install and keep Human Hook active after 2 weeks.
+- **Adoption**: Number of projects / teams that install and keep Pushback active after 2 weeks.
 - **Verification completion rate**: Percentage of triggered verifications that are completed (vs. overridden or abandoned).
 - **Developer sentiment**: Qualitative feedback — do developers feel it helps them understand their code better, or is it just annoying friction?
 - **Time to verify**: Average time from verification trigger to pass. Target: under 2 minutes.

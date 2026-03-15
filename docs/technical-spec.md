@@ -1,10 +1,10 @@
-# Human Hook — Technical Specification
+# Pushback — Technical Specification
 
-This document covers the implementation architecture for Human Hook v1 as defined in the [Product Requirements Document](./prd-human-hook.md). It focuses on the skill + hook combo approach targeting Cursor and Claude Code.
+This document covers the implementation architecture for Pushback v1 as defined in the [Product Requirements Document](./prd-pushback.md). It focuses on the skill + hook combo approach targeting Cursor and Claude Code.
 
 ## 1. System Architecture
 
-Human Hook is composed of three parts that work together:
+Pushback is composed of three parts that work together:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -25,7 +25,7 @@ Human Hook is composed of three parts that work together:
 ├─────────────────────────────────────────────────────────┤
 │                 VERIFICATION STATE                      │
 │                                                         │
-│  .human-hook/verified — Local receipt file containing   │
+│  .pushback/verified — Local receipt file containing   │
 │  a hash of the outgoing diff. Auto-invalidates when     │
 │  local commits change what would be pushed.              │
 │                                                         │
@@ -39,11 +39,11 @@ Human Hook is composed of three parts that work together:
 2. Editor hook fires (beforeShellExecution / PreToolUse)
 3. check-verification.sh runs:
    a. Compute SHA-256 of outgoing diff (local vs. remote)
-   b. Read .human-hook/verified
+   b. Read .pushback/verified
    c. Compare hashes
 4. If match → exit 0 (allow)
 5. If no match → exit 2 (block) + return agent_message
-   instructing the agent to run the Human Hook verification
+   instructing the agent to run the Pushback verification
 6. Agent activates the skill → conversational verification
 7. On pass → skill writes new receipt → agent retries push
 8. On fail → skill explains gaps, developer reviews and retries
@@ -54,14 +54,14 @@ This design lets the agent freely commit during a work session. Verification onl
 ## 2. Directory Structure
 
 ```
-human-hook/
+pushback/
 ├── SKILL.md                          # Skill definition (Cursor + Claude Code)
 ├── scripts/
 │   ├── setup.sh                      # Auto-installs hooks for detected editors
 │   └── check-verification.sh         # Hook script — receipt validation
 ├── references/
 │   └── verification-guide.md         # Detailed verification criteria and examples
-└── .human-hook.config.example.json   # Example project-level configuration
+└── .pushback.config.example.json   # Example project-level configuration
 ```
 
 When installed in a project, the following is created:
@@ -72,7 +72,7 @@ When installed in a project, the following is created:
 │   └── hooks.json                    # Cursor hook config (merged)
 ├── .claude/
 │   └── settings.json                 # Claude Code hook config (merged)
-└── .human-hook/
+└── .pushback/
     ├── config.json                   # Project-level configuration
     ├── verified                      # Current verification receipt (gitignored)
     └── hooks/
@@ -83,7 +83,7 @@ When installed in a project, the following is created:
 
 ### SKILL.md Structure
 
-The skill is the brain of Human Hook. It instructs the agent on how to conduct the verification conversation. Key responsibilities:
+The skill is the brain of Pushback. It instructs the agent on how to conduct the verification conversation. Key responsibilities:
 
 - Detect whether hooks are installed; if not, run `scripts/setup.sh`
 - Read the outgoing diff via `git diff @{upstream}..HEAD`
@@ -138,7 +138,7 @@ The skill checks these conditions before initiating verification. If all are met
 | Files changed are all in ignore list | lockfiles, `.gitignore`, auto-generated |
 | Only whitespace / formatting changes | detected via `git diff @{upstream}..HEAD -w` comparison |
 
-Thresholds are configurable via `.human-hook/config.json`.
+Thresholds are configurable via `.pushback/config.json`.
 
 ## 4. Hook Implementation
 
@@ -152,7 +152,7 @@ Cursor hooks are configured in `.cursor/hooks.json`. The default configuration i
   "hooks": {
     "beforeShellExecution": [
       {
-        "command": ".human-hook/hooks/check-verification.sh",
+        "command": ".pushback/hooks/check-verification.sh",
         "matcher": "git push"
       }
     ]
@@ -193,13 +193,13 @@ The hook script receives JSON on stdin from the editor. Its logic:
 2. Check if command matches configured triggers (default: git push)
    - If no match → exit 0 (allow, not a relevant command)
 3. Check for override flag
-   - If HUMAN_HOOK_OVERRIDE env var is set → exit 0 (allow)
+   - If PUSHBACK_OVERRIDE env var is set → exit 0 (allow)
 4. Compute the outgoing diff hash:
    - If upstream exists: `git diff @{upstream}..HEAD | shasum -a 256`
    - If no upstream (new branch): `git diff main..HEAD | shasum -a 256`
      (falls back to default branch detection via `git remote show origin`)
    - If no outgoing changes: exit 0 (allow, nothing to verify)
-5. Read .human-hook/verified
+5. Read .pushback/verified
 6. If file exists and hash matches → exit 0 (allow)
 7. If no match → output deny JSON and exit 2 (block)
 ```
@@ -209,14 +209,14 @@ The deny response includes an `agent_message` directing the agent to the skill:
 ```json
 {
   "permission": "deny",
-  "user_message": "Human Hook: verification required before pushing.",
-  "agent_message": "The push has been blocked because the developer has not yet verified their understanding of the outgoing changes. Use the Human Hook skill to conduct a verification conversation. Compare local vs. remote with `git diff @{upstream}..HEAD` to see all outgoing changes, ask the developer 2-3 questions about the architectural intent, integration points, and trade-offs, evaluate their responses, and write the verification receipt to .human-hook/verified if they demonstrate understanding."
+  "user_message": "Pushback: verification required before pushing.",
+  "agent_message": "The push has been blocked because the developer has not yet verified their understanding of the outgoing changes. Use the Pushback skill to conduct a verification conversation. Compare local vs. remote with `git diff @{upstream}..HEAD` to see all outgoing changes, ask the developer 2-3 questions about the architectural intent, integration points, and trade-offs, evaluate their responses, and write the verification receipt to .pushback/verified if they demonstrate understanding."
 }
 ```
 
 ## 5. Verification Receipt
 
-The receipt is a plain text file at `.human-hook/verified` containing:
+The receipt is a plain text file at `.pushback/verified` containing:
 
 ```
 <sha256-hash-of-outgoing-diff>
@@ -257,28 +257,28 @@ For later versions, the receipt could be expanded to a JSON format:
 For each detected editor:
 
 1. **Read existing hook config** (if any)
-2. **Merge** the Human Hook hook entry into the existing config (do not overwrite)
+2. **Merge** the Pushback hook entry into the existing config (do not overwrite)
 3. **Write** the updated config back
 4. **Copy** `check-verification.sh` to the appropriate hooks directory
 5. **Make executable**: `chmod +x`
 
 Additionally:
 
-6. **Create** `.human-hook/` directory
-7. **Create** `.human-hook/config.json` with defaults
-8. **Add** `.human-hook/verified` to `.gitignore` (if not already present)
+6. **Create** `.pushback/` directory
+7. **Create** `.pushback/config.json` with defaults
+8. **Add** `.pushback/verified` to `.gitignore` (if not already present)
 
 ### Config Merging
 
 The setup script must handle these cases when merging hook configurations:
 
-- **No existing config file**: Create it with only the Human Hook entry.
-- **Existing config, no conflicting hooks**: Add the Human Hook entry to the hooks array.
-- **Existing config, Human Hook already present**: Update in place (idempotent).
+- **No existing config file**: Create it with only the Pushback entry.
+- **Existing config, no conflicting hooks**: Add the Pushback entry to the hooks array.
+- **Existing config, Pushback already present**: Update in place (idempotent).
 
 ## 7. Project Configuration
 
-`.human-hook/config.json` — project-level settings:
+`.pushback/config.json` — project-level settings:
 
 ```json
 {
@@ -294,7 +294,7 @@ The setup script must handle these cases when merging hook configurations:
       "*.generated.*"
     ]
   },
-  "override_env_var": "HUMAN_HOOK_OVERRIDE"
+  "override_env_var": "PUSHBACK_OVERRIDE"
 }
 ```
 
@@ -312,7 +312,7 @@ This config file should be committed to the repository so the whole team shares 
 Developers can bypass verification by setting the configured environment variable before running the git command:
 
 ```bash
-HUMAN_HOOK_OVERRIDE=1 git push
+PUSHBACK_OVERRIDE=1 git push
 ```
 
 When using an AI agent, the developer would tell the agent to set this variable. The skill should acknowledge the override and remind the developer that verification was skipped.
@@ -338,8 +338,8 @@ The `check-verification.sh` script must handle both input formats. It can detect
 The SKILL.md format is identical for Cursor and Claude Code. Both use the same frontmatter schema (`name`, `description`) and both load the body as markdown instructions. A single SKILL.md works in both tools without modification.
 
 Skill installation location:
-- **Project-level (recommended)**: `.cursor/skills/human-hook/` (Cursor) — Claude Code picks up skills from the project directory or via its own skill paths
-- **User-level**: `~/.cursor/skills/human-hook/` or equivalent Claude Code path
+- **Project-level (recommended)**: `.cursor/skills/pushback/` (Cursor) — Claude Code picks up skills from the project directory or via its own skill paths
+- **User-level**: `~/.cursor/skills/pushback/` or equivalent Claude Code path
 
 For team adoption, project-level installation is preferred so the skill is shared via version control.
 
@@ -374,8 +374,8 @@ If `check-verification.sh` is missing (e.g., deleted accidentally), the hook fai
 These are out of scope for v1 but inform the architecture:
 
 - **Git hook fallback**: A `.git/hooks/pre-push` script that checks for the receipt file. No LLM needed — just hash comparison. Covers manual terminal pushes.
-- **Receipt-in-commit-message**: Appending a `Verified-By: human-hook` trailer or emoji to the final commit message for team visibility.
-- **Verification transcript storage**: Saving Q&A transcripts (locally or in a `.human-hook/history/` directory) for developer self-review.
+- **Receipt-in-commit-message**: Appending a `Verified-By: pushback` trailer or emoji to the final commit message for team visibility.
+- **Verification transcript storage**: Saving Q&A transcripts (locally or in a `.pushback/history/` directory) for developer self-review.
 - **Depth scaling**: Using diff complexity metrics (files touched, cyclomatic complexity delta, new dependencies) to scale question count from 1 to 5.
 - **Codex / OpenCode support**: Adding hook configurations for these tools as their hook systems mature.
 - **Per-commit gating**: Opt-in configuration to also gate `git commit`, using `git diff --cached` for the hash instead of the upstream diff. Useful for teams that want tighter control.

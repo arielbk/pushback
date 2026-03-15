@@ -1,6 +1,6 @@
-# Human Hook — Verification Guide
+# Pushback — Verification Guide
 
-Reference for the agent conducting the Human Hook verification conversation. Load this file before evaluating a developer's answers.
+Reference for the agent conducting the Pushback verification conversation. Load this file before evaluating a developer's answers.
 
 ---
 
@@ -93,7 +93,7 @@ For refactors with no behavior change, shift questions toward integration and ri
 
 ### Agent-generated code the developer hasn't read
 
-This is the core case Human Hook is designed to catch. If the developer's answers suggest they haven't looked at the diff at all, don't pass them. Instead:
+This is the core case Pushback is designed to catch. If the developer's answers suggest they haven't looked at the diff at all, don't pass them. Instead:
 - Point to specific parts of the diff they should review
 - Offer to walk through it with them
 - Remind them verification is about their understanding, not the code's correctness
@@ -102,8 +102,8 @@ This is the core case Human Hook is designed to catch. If the developer's answer
 
 If the developer explicitly says they want to bypass verification (e.g., "just push it", "use the override"):
 - Acknowledge the request: "Understood — I'll set the override for this push."
-- Remind them once that verification was skipped: "Heads up: Human Hook verification was bypassed for this push."
-- Set `HUMAN_HOOK_OVERRIDE=1` in the environment and re-run the push command.
+- Remind them once that verification was skipped: "Heads up: Pushback verification was bypassed for this push."
+- Set `PUSHBACK_OVERRIDE=1` in the environment and re-run the push command.
 - Do not repeat the reminder or make them feel judged.
 
 ---
@@ -138,14 +138,14 @@ On outcome (fail):
 On a verified pass, write the receipt with:
 
 ```bash
-git diff @{upstream}..HEAD | shasum -a 256 | awk '{print $1}' > .human-hook/verified
+git diff @{upstream}..HEAD | shasum -a 256 | awk '{print $1}' > .pushback/verified
 ```
 
 For branches with no upstream yet:
 
 ```bash
 DEFAULT=$(git remote show origin | grep 'HEAD branch' | awk '{print $NF}')
-git diff "$DEFAULT"..HEAD | shasum -a 256 | awk '{print $1}' > .human-hook/verified
+git diff "$DEFAULT"..HEAD | shasum -a 256 | awk '{print $1}' > .pushback/verified
 ```
 
 After writing the receipt, re-run the original push command. The hook will read the matching hash and allow it through.

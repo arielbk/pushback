@@ -1,4 +1,4 @@
-name: Human Hook Verification
+name: Pushback Verification
 
 on:
   pull_request:
@@ -13,4 +13,4 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: arielbk/human-hook/action@main
+      - uses: arielbk/pushback/action@main

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Human Hook PR Verification
-# Checks that commits in a pull request have Human-Hook-Verified trailers.
+# Pushback PR Verification
+# Checks that commits in a pull request have Pushback-Verified trailers.
 
-TRAILER_KEY="Human-Hook-Verified"
+TRAILER_KEY="Pushback-Verified"
 
 # Resolve commit range
 BASE="${PR_BASE_SHA}"
@@ -20,7 +20,7 @@ COMMITS=$(git rev-list --reverse "$BASE".."$HEAD")
 
 if [ -z "$COMMITS" ]; then
   echo "No commits found in range ${BASE}..${HEAD}"
-  echo "## Human Hook Verification" >> "$GITHUB_STEP_SUMMARY"
+  echo "## Pushback Verification" >> "$GITHUB_STEP_SUMMARY"
   echo "" >> "$GITHUB_STEP_SUMMARY"
   echo "No commits to verify." >> "$GITHUB_STEP_SUMMARY"
   exit 0
@@ -40,8 +40,8 @@ for SHA in $COMMITS; do
   AUTHOR=$(git log -1 --format='%an' "$SHA")
   SUBJECT=$(git log -1 --format='%s' "$SHA")
 
-  # Check for the Human-Hook-Verified trailer in the commit message
-  TRAILER_VALUE=$(git log -1 --format='%(trailers:key=Human-Hook-Verified,valueonly)' "$SHA" | head -1)
+  # Check for the Pushback-Verified trailer in the commit message
+  TRAILER_VALUE=$(git log -1 --format='%(trailers:key=Pushback-Verified,valueonly)' "$SHA" | head -1)
 
   if [ -n "$TRAILER_VALUE" ]; then
     STATUS_ICON="pass"
@@ -66,7 +66,7 @@ if [ "$REQUIRE_ALL" = "true" ]; then
 else
   # Only the last commit needs to be verified
   LAST_SHA=$(echo "$COMMITS" | tail -1)
-  LAST_TRAILER=$(git log -1 --format='%(trailers:key=Human-Hook-Verified,valueonly)' "$LAST_SHA" | head -1)
+  LAST_TRAILER=$(git log -1 --format='%(trailers:key=Pushback-Verified,valueonly)' "$LAST_SHA" | head -1)
   if [ -n "$LAST_TRAILER" ]; then
     RESULT="pass"
   else
@@ -76,7 +76,7 @@ fi
 
 # Write summary to GITHUB_STEP_SUMMARY
 {
-  echo "## Human Hook Verification"
+  echo "## Pushback Verification"
   echo ""
   if [ "$RESULT" = "pass" ]; then
     echo "> **Passed** — ${VERIFIED}/${TOTAL} commits verified."
@@ -95,7 +95,7 @@ fi
 
 # Console output
 echo ""
-echo "=== Human Hook Verification ==="
+echo "=== Pushback Verification ==="
 echo "Commits: ${TOTAL}  Verified: ${VERIFIED}  Missing: ${UNVERIFIED}"
 echo ""
 
@@ -104,10 +104,10 @@ if [ "$RESULT" = "fail" ]; then
   echo -e "$UNVERIFIED_LIST"
 
   if [ "$FAIL_ON_MISSING" = "true" ]; then
-    echo "::error::Human Hook verification failed. ${UNVERIFIED} commit(s) missing verification."
+    echo "::error::Pushback verification failed. ${UNVERIFIED} commit(s) missing verification."
     exit 1
   else
-    echo "::warning::Human Hook verification incomplete. ${UNVERIFIED} commit(s) missing verification."
+    echo "::warning::Pushback verification incomplete. ${UNVERIFIED} commit(s) missing verification."
     exit 0
   fi
 else

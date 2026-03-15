@@ -11,5 +11,5 @@
       "*.generated.*"
     ]
   },
-  "override_env_var": "HUMAN_HOOK_OVERRIDE"
+  "override_env_var": "PUSHBACK_OVERRIDE"
 }

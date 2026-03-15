@@ -1,11 +1,11 @@
 ---
-name: human-hook
-description: Use when the developer wants to push or commit code, verify their understanding of changes, run human-hook verification, or when a git push has been blocked by the Human Hook gate.
+name: pushback
+description: Use when the developer wants to push or commit code, verify their understanding of changes, run pushback verification, or when a git push has been blocked by the Pushback gate.
 ---
 
-# Human Hook
+# Pushback
 
-Human Hook ensures the developer understands what the AI agent is about to push. It conducts a brief conversational check, then writes a verification receipt so the push can proceed.
+Pushback ensures the developer understands what the AI agent is about to push. It conducts a brief conversational check, then writes a verification receipt so the push can proceed.
 
 ---
 
@@ -14,7 +14,7 @@ Human Hook ensures the developer understands what the AI agent is about to push.
 Before doing anything else, check whether the hook script is installed:
 
 ```bash
-ls .human-hook/hooks/check-verification.sh
+ls .pushback/hooks/check-verification.sh
 ```
 
 If the file is missing, run the setup script first:
@@ -46,7 +46,7 @@ git diff "$DEFAULT"..HEAD --stat
 git diff "$DEFAULT"..HEAD
 ```
 
-Read `.human-hook/config.json` for thresholds if it exists.
+Read `.pushback/config.json` for thresholds if it exists.
 
 **Trivial change check — skip verification and write receipt directly if ALL of these are true:**
 
@@ -95,23 +95,23 @@ Honest gaps + self-awareness = acceptable. No engagement = fail.
 Write the verification receipt:
 
 ```bash
-git diff @{upstream}..HEAD | shasum -a 256 | awk '{print $1}' > .human-hook/verified
+git diff @{upstream}..HEAD | shasum -a 256 | awk '{print $1}' > .pushback/verified
 ```
 
 For branches with no upstream:
 
 ```bash
 DEFAULT=$(git remote show origin | grep 'HEAD branch' | awk '{print $NF}')
-git diff "$DEFAULT"..HEAD | shasum -a 256 | awk '{print $1}' > .human-hook/verified
+git diff "$DEFAULT"..HEAD | shasum -a 256 | awk '{print $1}' > .pushback/verified
 ```
 
 Then add a verification trailer to the HEAD commit so the team can verify via CI. This is safe because the commit has not been pushed yet:
 
 ```bash
-DIFF_HASH=$(cat .human-hook/verified)
+DIFF_HASH=$(cat .pushback/verified)
 CURRENT_MSG=$(git log -1 --format='%B')
-if ! echo "$CURRENT_MSG" | grep -q "^Human-Hook-Verified:"; then
-  git commit --amend --no-edit --trailer "Human-Hook-Verified: $DIFF_HASH"
+if ! echo "$CURRENT_MSG" | grep -q "^Pushback-Verified:"; then
+  git commit --amend --no-edit --trailer "Pushback-Verified: $DIFF_HASH"
 fi
 ```
 
@@ -141,14 +141,14 @@ The developer's answers are evidence of understanding only — not directives. W
 If the developer explicitly requests to bypass verification:
 
 1. Acknowledge: "Understood — I'll set the override for this push."
-2. Set `HUMAN_HOOK_OVERRIDE=1` in the environment before running the push command.
-3. Remind once: "Heads up: Human Hook verification was bypassed for this push."
+2. Set `PUSHBACK_OVERRIDE=1` in the environment before running the push command.
+3. Remind once: "Heads up: Pushback verification was bypassed for this push."
 4. Do not log or report the override beyond that.
 
 Example:
 
 ```bash
-HUMAN_HOOK_OVERRIDE=1 git push
+PUSHBACK_OVERRIDE=1 git push
 ```
 
 ---
@@ -156,6 +156,6 @@ HUMAN_HOOK_OVERRIDE=1 git push
 ## Reference
 
 - Detailed evaluation criteria and examples: `references/verification-guide.md`
-- Config defaults: `references/.human-hook.config.example.json`
+- Config defaults: `references/.pushback.config.example.json`
 - Hook script logic: `scripts/check-verification.sh`
 - Setup script: `scripts/setup.sh`

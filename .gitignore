@@ -4,5 +4,5 @@
 .agents/
 skills-lock.json
 
-# Human Hook — local verification receipt
-.human-hook/verified
+# Pushback — local verification receipt
+.pushback/verified

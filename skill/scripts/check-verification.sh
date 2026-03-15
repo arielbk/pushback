@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Human Hook — check-verification.sh
+# Pushback — check-verification.sh
 # Called by Cursor (beforeShellExecution) or Claude Code (PreToolUse) before
 # git push (or git commit if configured). Blocks the command via exit 2 when
 # the verification receipt is missing or stale.
@@ -22,16 +22,16 @@ COMMAND="$(echo "$INPUT" | jq -r '
 # ── Locate project root and config ─────────────────────────────────────────
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-CONFIG_FILE="$PROJECT_ROOT/.human-hook/config.json"
-RECEIPT_FILE="$PROJECT_ROOT/.human-hook/verified"
+CONFIG_FILE="$PROJECT_ROOT/.pushback/config.json"
+RECEIPT_FILE="$PROJECT_ROOT/.pushback/verified"
 
 # Load config values (fall back to defaults if config is missing)
 if [ -f "$CONFIG_FILE" ]; then
   TRIGGERS="$(jq -r '.triggers // ["push"] | join(" ")' "$CONFIG_FILE" 2>/dev/null || echo "push")"
-  OVERRIDE_VAR="$(jq -r '.override_env_var // "HUMAN_HOOK_OVERRIDE"' "$CONFIG_FILE" 2>/dev/null || echo "HUMAN_HOOK_OVERRIDE")"
+  OVERRIDE_VAR="$(jq -r '.override_env_var // "PUSHBACK_OVERRIDE"' "$CONFIG_FILE" 2>/dev/null || echo "PUSHBACK_OVERRIDE")"
 else
   TRIGGERS="push"
-  OVERRIDE_VAR="HUMAN_HOOK_OVERRIDE"
+  OVERRIDE_VAR="PUSHBACK_OVERRIDE"
 fi
 
 # ── Check if this command is a configured trigger ──────────────────────────
@@ -53,7 +53,7 @@ fi
 # ── Check override env var ─────────────────────────────────────────────────
 
 if [ -n "${!OVERRIDE_VAR:-}" ] 2>/dev/null || \
-   ([ "$OVERRIDE_VAR" = "HUMAN_HOOK_OVERRIDE" ] && [ -n "${HUMAN_HOOK_OVERRIDE:-}" ]); then
+   ([ "$OVERRIDE_VAR" = "PUSHBACK_OVERRIDE" ] && [ -n "${PUSHBACK_OVERRIDE:-}" ]); then
   exit 0
 fi
 
@@ -99,8 +99,8 @@ cat <<EOF
 {
   "permission": "deny",
   "decision": "block",
-  "user_message": "Human Hook: verification required before pushing.",
-  "agent_message": "The push has been blocked because the developer has not yet verified their understanding of the outgoing changes. Use the Human Hook skill to conduct a verification conversation. Compare local vs. remote with \`git diff @{upstream}..HEAD\` to see all outgoing changes, ask the developer 2-3 questions about the architectural intent, integration points, and trade-offs, evaluate their responses, and write the verification receipt to .human-hook/verified if they demonstrate understanding."
+  "user_message": "Pushback: verification required before pushing.",
+  "agent_message": "The push has been blocked because the developer has not yet verified their understanding of the outgoing changes. Use the Pushback skill to conduct a verification conversation. Compare local vs. remote with \`git diff @{upstream}..HEAD\` to see all outgoing changes, ask the developer 2-3 questions about the architectural intent, integration points, and trade-offs, evaluate their responses, and write the verification receipt to .pushback/verified if they demonstrate understanding."
 }
 EOF
 
