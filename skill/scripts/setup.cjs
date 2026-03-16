@@ -25,7 +25,6 @@ const pushbackDir = path.join(repoRoot, '.pushback');
 const hooksDestDir = path.join(pushbackDir, 'hooks');
 const configFile = path.join(pushbackDir, 'config.json');
 const gitignorePath = path.join(repoRoot, '.gitignore');
-const packageJsonPath = path.join(repoRoot, 'package.json');
 
 console.log('Pushback: running setup...');
 
@@ -37,7 +36,7 @@ fs.mkdirSync(hooksDestDir, { recursive: true });
 fs.copyFileSync(hookSrc, path.join(hooksDestDir, 'pre-push.cjs'));
 log('\u2713 Hook script installed at .pushback/hooks/pre-push.cjs');
 
-// Copy install script to .pushback/hooks/install.cjs (for prepare script)
+// Copy install script to .pushback/hooks/install.cjs
 fs.copyFileSync(installSrc, path.join(hooksDestDir, 'install.cjs'));
 log('\u2713 Install script at .pushback/hooks/install.cjs');
 
@@ -86,119 +85,14 @@ if (fs.existsSync(gitignorePath)) {
   log('\u2713 Created .gitignore with .pushback/verified entry');
 }
 
-// ── Detect hook manager and install persistently ─────────────────────────
-
-const huskyDir = path.join(repoRoot, '.husky');
-const lefthookYml = path.join(repoRoot, 'lefthook.yml');
-const lefthookDotYml = path.join(repoRoot, '.lefthook.yml');
-
-const PUSHBACK_HOOK_LINE = 'node .pushback/hooks/pre-push.cjs';
-let hookInstalled = false;
-
-// ── Strategy 1: Husky ────────────────────────────────────────────────────
-// Husky v9+ uses .husky/<hook-name> files that run as shell scripts.
-// These are committed, and Husky installs them for every developer.
-
-if (fs.existsSync(huskyDir)) {
-  const huskyPrePush = path.join(huskyDir, 'pre-push');
-
-  if (fs.existsSync(huskyPrePush)) {
-    const content = fs.readFileSync(huskyPrePush, 'utf8');
-    if (content.includes('.pushback')) {
-      log('\u00b7 Pushback already in .husky/pre-push, skipping');
-    } else {
-      // Append to existing husky pre-push
-      fs.appendFileSync(huskyPrePush, `\n${PUSHBACK_HOOK_LINE}\n`);
-      log('\u2713 Added Pushback to existing .husky/pre-push');
-    }
-  } else {
-    // Create new husky pre-push file
-    fs.writeFileSync(huskyPrePush, `${PUSHBACK_HOOK_LINE}\n`);
-    try { fs.chmodSync(huskyPrePush, 0o755); } catch {}
-    log('\u2713 Created .husky/pre-push with Pushback hook');
-  }
-
-  hookInstalled = true;
-}
-
-// ── Strategy 2: lefthook ─────────────────────────────────────────────────
-// lefthook uses a YAML config. We add a pre-push command.
-
-const lefthookPath = fs.existsSync(lefthookYml)
-  ? lefthookYml
-  : fs.existsSync(lefthookDotYml)
-    ? lefthookDotYml
-    : null;
-
-if (!hookInstalled && lefthookPath) {
-  const content = fs.readFileSync(lefthookPath, 'utf8');
-
-  if (content.includes('.pushback')) {
-    log('\u00b7 Pushback already in lefthook config, skipping');
-  } else {
-    // Append a pre-push section
-    const entry = `
-pre-push:
-  commands:
-    pushback:
-      run: ${PUSHBACK_HOOK_LINE}
-`;
-    fs.appendFileSync(lefthookPath, entry);
-    log('\u2713 Added Pushback pre-push command to lefthook config');
-  }
-
-  hookInstalled = true;
-}
-
-// ── Strategy 3: package.json prepare script ──────────────────────────────
-// If there's a package.json but no hook manager, add a "prepare" script
-// that runs install.cjs. This mirrors what Husky does — every `npm install`
-// triggers hook installation.
-
-if (!hookInstalled && fs.existsSync(packageJsonPath)) {
-  const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-  const prepareCmd = 'node .pushback/hooks/install.cjs';
-
-  if (!pkg.scripts) pkg.scripts = {};
-
-  const existing = pkg.scripts.prepare || '';
-
-  if (existing.includes('.pushback')) {
-    log('\u00b7 Pushback already in package.json prepare script, skipping');
-  } else if (existing) {
-    // Append to existing prepare script
-    pkg.scripts.prepare = `${existing} && ${prepareCmd}`;
-    fs.writeFileSync(packageJsonPath, JSON.stringify(pkg, null, 2) + '\n');
-    log('\u2713 Appended Pushback to existing prepare script in package.json');
-  } else {
-    pkg.scripts.prepare = prepareCmd;
-    fs.writeFileSync(packageJsonPath, JSON.stringify(pkg, null, 2) + '\n');
-    log('\u2713 Added prepare script to package.json');
-  }
-
-  hookInstalled = true;
-}
-
-// ── Strategy 4: No hook manager, no package.json ─────────────────────────
-// Fall back to direct shim installation. Warn that teammates need to run
-// setup or add a hook manager.
-
-if (!hookInstalled) {
-  log('\u26a0 No hook manager (Husky, lefthook) or package.json detected.');
-  log('  Teammates will need to run setup manually after cloning,');
-  log('  or add a hook manager to automate hook installation.');
-}
-
-// ── Always install the git shim for the current developer ────────────────
-// Regardless of hook manager, make sure THIS machine has the hook now.
+// ── Install the git hook shim ────────────────────────────────────────────
+// Installs a shell shim at .git/hooks/pre-push that calls the hook logic.
+// If a hook manager (Husky, lefthook, etc.) is in use, the agent handles
+// integration after setup — see SKILL.md for details.
 
 const gitHooksDir = path.join(repoRoot, '.git', 'hooks');
 const prePushHook = path.join(gitHooksDir, 'pre-push');
 
-fs.mkdirSync(gitHooksDir, { recursive: true });
-
-// The shim is a shell script so it works regardless of package.json "type".
-// It calls node on a .cjs file which is always treated as CommonJS.
 const shimContent = `#!/usr/bin/env sh
 # Pushback pre-push hook
 exec node "$(git rev-parse --show-toplevel)/.pushback/hooks/pre-push.cjs" "$@"
@@ -207,12 +101,11 @@ exec node "$(git rev-parse --show-toplevel)/.pushback/hooks/pre-push.cjs" "$@"
 if (fs.existsSync(prePushHook)) {
   const existing = fs.readFileSync(prePushHook, 'utf8');
   if (existing.includes('Pushback') || existing.includes('.pushback')) {
-    // Already our hook — overwrite with latest shim
     fs.writeFileSync(prePushHook, shimContent);
     try { fs.chmodSync(prePushHook, 0o755); } catch {}
     log('\u2713 Updated existing Pushback pre-push hook');
-  } else if (!hookInstalled) {
-    // Someone else's hook and no hook manager — preserve and chain
+  } else {
+    // Someone else's hook — back it up and chain
     const previousPath = prePushHook + '.previous';
     if (!fs.existsSync(previousPath)) {
       fs.renameSync(prePushHook, previousPath);
@@ -222,9 +115,8 @@ if (fs.existsSync(prePushHook)) {
     try { fs.chmodSync(prePushHook, 0o755); } catch {}
     log('\u2713 Installed Pushback pre-push hook (chains to previous hook)');
   }
-  // If a hook manager is handling it AND there's a non-pushback hook,
-  // leave it alone — the hook manager owns that file.
 } else {
+  fs.mkdirSync(gitHooksDir, { recursive: true });
   fs.writeFileSync(prePushHook, shimContent);
   try { fs.chmodSync(prePushHook, 0o755); } catch {}
   log('\u2713 Installed pre-push hook at .git/hooks/pre-push');
@@ -251,18 +143,10 @@ if (fs.existsSync(workflowFile)) {
 console.log('');
 console.log('Pushback setup complete.');
 console.log('');
-console.log('  Gate:     .git/hooks/pre-push (blocks all pushes)');
+console.log('  Gate:     .git/hooks/pre-push');
 console.log('  Config:   .pushback/config.json');
 console.log('  Receipt:  .pushback/verified (gitignored)');
 console.log('  CI:       .github/workflows/pushback.yml');
-if (hookInstalled) {
-  console.log('');
-  console.log('  Hook persistence: teammates will get the hook automatically.');
-} else {
-  console.log('');
-  console.log('  \u26a0 Hook persistence: teammates must run setup manually.');
-  console.log('  Consider adding Husky or a package.json to automate this.');
-}
 console.log('');
 console.log('  To override verification for a single push:');
 console.log('    PUSHBACK_OVERRIDE=1 git push');

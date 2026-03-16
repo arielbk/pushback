@@ -58,7 +58,7 @@ This design lets the agent freely commit during a work session. Verification onl
 pushback/
 ├── SKILL.md                          # Skill definition (Cursor + Claude Code)
 ├── scripts/
-│   ├── setup.js                      # Installs hook + config + persistence
+│   ├── setup.cjs                      # Installs hook + config + persistence
 │   ├── pre-push.cjs                   # Git pre-push hook logic
 │   └── install.cjs                    # Lightweight hook installer (for prepare)
 ├── references/
@@ -89,7 +89,7 @@ The hook logic at `.pushback/hooks/pre-push.cjs` is committed to the repo so the
 
 The skill is the brain of Pushback. It instructs the agent on how to conduct the verification conversation. Key responsibilities:
 
-- Detect whether the pre-push hook is installed; if not, run `scripts/setup.js`
+- Detect whether the pre-push hook is installed; if not, run `scripts/setup.cjs`
 - Read the outgoing diff via `git diff @{upstream}..HEAD`
 - Assess whether changes are trivial (skip verification if so)
 - Generate targeted questions based on the diff
@@ -228,7 +228,7 @@ For later versions, the receipt could be expanded to a JSON format:
 
 ## 6. Setup Script
 
-`scripts/setup.js` handles first-time installation. Written in Node.js for cross-platform compatibility. The skill instructs the agent to run this on first use.
+`scripts/setup.cjs` handles first-time installation. Written in Node.js for cross-platform compatibility. The skill instructs the agent to run this on first use.
 
 ### Installation Steps
 
@@ -237,22 +237,20 @@ For later versions, the receipt could be expanded to a JSON format:
 3. **Copy** installer to `.pushback/hooks/install.cjs` (version-controlled)
 4. **Create** `.pushback/config.json` with defaults (if not present)
 5. **Add** `.pushback/verified` to `.gitignore` (if not already present)
-6. **Detect hook manager** and integrate for persistence (see below)
-7. **Install** a small shell shim at `.git/hooks/pre-push` for the current developer
-8. **Install** GitHub Action workflow (if template is available)
+6. **Install** a small shell shim at `.git/hooks/pre-push` for the current developer
+7. **Install** GitHub Action workflow (if template is available)
 
 ### Hook Persistence
 
-The first developer runs setup manually. After that, the hook must install automatically for every teammate who clones the repo. The setup script detects the project's hook management strategy and integrates accordingly:
+The first developer runs setup manually. After that, the hook must install automatically for every teammate who clones the repo. The setup script handles the mechanical installation; the **agent** handles hook persistence by integrating with whatever hook management the project already uses.
 
-| Strategy | Detection | Integration |
-|----------|-----------|-------------|
-| **Husky** | `.husky/` directory exists | Creates/appends to `.husky/pre-push` with `node .pushback/hooks/pre-push.cjs` |
-| **lefthook** | `lefthook.yml` or `.lefthook.yml` exists | Appends a `pre-push` command entry to the YAML config |
-| **package.json** (no hook manager) | `package.json` exists | Adds/appends a `prepare` script: `node .pushback/hooks/install.cjs` |
-| **No package.json** | None of the above | Installs shim directly; warns that teammates need manual setup |
+The SKILL.md instructs the agent to examine the project after running setup and integrate accordingly — adding to Husky's `.husky/pre-push`, lefthook's YAML config, a `package.json` prepare script, or whatever other hook system is present. This is delegated to the agent rather than hard-coded in the setup script because:
 
-The `install.cjs` script is a lightweight, silent installer designed to run from a `prepare` script. It only installs the git hook shim — no config, no workflow, no output on success. It exits silently if Pushback isn't set up in the project or if the hook is already installed.
+- Hook managers vary widely and new ones emerge (Husky, lefthook, simple-git-hooks, etc.)
+- Each has its own config format and conventions
+- The agent can read docs, inspect configs, and adapt — a deterministic script can only handle cases it was programmed for
+
+The `install.cjs` script is a lightweight, silent installer designed to run from a `prepare` script or similar lifecycle hook. It only installs the git hook shim — no config, no workflow, no output on success. It exits silently if Pushback isn't set up in the project or if the hook is already installed.
 
 ### Idempotency
 
@@ -261,7 +259,6 @@ The setup script is safe to run multiple times:
 - Gitignore entry is checked before adding
 - Our own hook shim is overwritten with the latest version
 - Hook logic in `.pushback/hooks/pre-push.cjs` is always overwritten with the latest
-- Hook manager entries are checked for existing Pushback references before appending
 - Third-party hooks are only backed up once (won't re-backup `pre-push.previous`)
 
 ## 7. Project Configuration

@@ -18,7 +18,7 @@ npx skills add arielbk/pushback
 
 That's it. On first use, the skill installs a git `pre-push` hook, writes a default config, and sets up a GitHub Action workflow for your PRs. From that point on, every `git push` is gated — whether it comes from your terminal, IDE, or AI agent.
 
-If your project uses Husky, lefthook, or has a `package.json`, setup integrates with your existing hook management so teammates get the hook automatically. No extra setup for the rest of the team — they clone, run `npm install`, and they're gated.
+After setup, the agent integrates with your project's existing hook management — Husky, lefthook, a `prepare` script, or whatever else you use — so teammates get the hook automatically. No extra setup for the rest of the team.
 
 ## How it works
 
@@ -133,7 +133,7 @@ pushback/
 └── skill/                               # Bundled by npx skills add
     ├── SKILL.md                         # Agent instructions
     ├── scripts/
-    │   ├── setup.js                     # Installs hook + config + persistence
+    │   ├── setup.cjs                     # Installs hook + config + persistence
     │   ├── pre-push.cjs                  # Git pre-push hook logic
     │   └── install.cjs                   # Lightweight hook installer (for prepare)
     └── references/
