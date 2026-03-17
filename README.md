@@ -13,17 +13,16 @@ For teams, it goes further. Every verified push carries a cryptographic receipt.
 ## Install
 
 ```bash
-npm install -D pushback-cli
-npx pushback setup
-```
-
-The setup command installs a git `pre-push` hook, writes a default config, and sets up a GitHub Action workflow for your PRs. From that point on, every `git push` is gated — whether it comes from your terminal, IDE, or AI agent.
-
-You can also install Pushback as a skill for your AI agent:
-
-```bash
 npx skills add arielbk/pushback
 ```
+
+Then tell your agent: *"Set up Pushback in this project."*
+
+On first use, the agent detects your project's package manager when one exists, installs `pushback-cli` when appropriate, and otherwise falls back to `npx` without forcing the repo into an npm-based workflow.
+
+Setup installs a git `pre-push` hook, writes a default config, and sets up a GitHub Action workflow for your PRs. From that point on, every `git push` is gated — whether it comes from your terminal, IDE, or AI agent.
+
+If you prefer to do it manually, install `pushback-cli` as a dev dependency with your package manager and run `pushback setup`.
 
 After setup, the agent integrates with your project's existing hook management — Husky, lefthook, a `prepare` script, or whatever else you use — so teammates get the hook automatically. No extra setup for the rest of the team.
 
@@ -40,6 +39,8 @@ git push (from anywhere)
 ```
 
 The receipt is a SHA-256 hash of your outgoing diff. Make new commits after verification? The hash changes. Re-verification required. The system is self-invalidating — you can't verify once and keep pushing different code.
+
+That receipt lives in `.pushback/verified` and is local-only: it exists to unblock the pre-push hook, is gitignored, and never leaves your machine. Separately, Pushback also writes a `Pushback-Verified` trailer into the commit message itself. That's what travels with the commit to the remote and what CI checks on pull requests. The two are intentionally decoupled: the receipt is ephemeral, the trailer is permanent.
 
 ### What you get asked
 
