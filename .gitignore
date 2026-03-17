@@ -8,5 +8,8 @@ skills-lock.json
 node_modules/
 dist/
 
+# npm auth
+.npmrc
+
 # Pushback — local verification receipt
 .pushback/verified
