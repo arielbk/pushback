@@ -86,15 +86,29 @@ DEFAULT=$(git symbolic-ref refs/remotes/origin/HEAD)
 git diff "$DEFAULT"..HEAD | shasum -a 256 | awk '{print $1}' > .pushback/verified
 ```
 
-Then add a verification trailer to the HEAD commit so the team can verify via CI. This is safe because the commit has not been pushed yet:
+Then add the trailers to the HEAD commit so the team sees them on the PR. This is safe because the commit has not been pushed yet.
+
+Alongside `Pushback-Verified`, write a **summary block**: three `Pushback-Summary` lines condensed from what the developer just told you — one for intent, one for what the change touches, one for the known risk. The PR check renders these lines next to the commit, so they are what a reviewer reads first.
 
 ```bash
 DIFF_HASH=$(cat .pushback/verified)
-CURRENT_MSG=$(git log -1 --format='%B')
-if ! echo "$CURRENT_MSG" | grep -q "^Pushback-Verified:"; then
-  git commit --amend --no-edit --trailer "Pushback-Verified: $DIFF_HASH"
+if ! git log -1 --format='%B' | grep -q "^Pushback-Verified:"; then
+  git commit --amend --no-edit \
+    --trailer "Pushback-Verified: $DIFF_HASH" \
+    --trailer "Pushback-Summary: Intent: <why this change exists>" \
+    --trailer "Pushback-Summary: Touches: <what else it affects>" \
+    --trailer "Pushback-Summary: Risk: <the known risk or limitation>"
 fi
 ```
+
+Rules for the three lines:
+
+- **The developer's words, condensed — not yours.** Keep their phrasing and their level of certainty. You are trimming an answer to one line, not rewriting it or improving on it.
+- **One line each, roughly a sentence.** No newlines inside a value; a trailer is a single line. Keep each under ~120 characters.
+- **Never invent.** If an answer covered an area only thinly, say so in their terms ("Risk: not sure what happens to in-flight requests"). An honest gap is a real signal for the reviewer. If they genuinely said nothing about an area, you should not be on the pass path — go back to Phase 4.
+- **Write all three, or none.** A partial block reads as an oversight rather than an answer.
+
+Load `references/verification-guide.md` for worked examples of good and poor summary lines.
 
 Tell the developer:
 > "You've demonstrated a solid understanding of these changes. Writing the verification receipt and retrying the push."

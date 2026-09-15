@@ -149,3 +149,45 @@ git diff "$DEFAULT"..HEAD | shasum -a 256 | awk '{print $1}' > .pushback/verifie
 ```
 
 After writing the receipt, re-run the original push command. The hook will read the matching hash and allow it through.
+
+---
+
+## Writing the Summary Block
+
+The receipt proves a conversation happened. The **summary block** is what makes that conversation useful to somebody else: three `Pushback-Summary` trailer lines, condensed from the developer's own answers, that the PR check renders beside the commit.
+
+```bash
+git commit --amend --no-edit \
+  --trailer "Pushback-Verified: $DIFF_HASH" \
+  --trailer "Pushback-Summary: Intent: stop the profile page re-querying the DB on every render" \
+  --trailer "Pushback-Summary: Touches: UserService and anything calling getProfile; adds a Redis keyspace" \
+  --trailer "Pushback-Summary: Risk: profiles can be up to 60s stale — no invalidation on write yet"
+```
+
+Read that block cold, with no access to the diff, and you know what the change is for, what it reaches, and what to watch. That is the bar.
+
+### Good summary lines
+
+Drawn from what the developer actually said, specific, and honest about the edges:
+
+- `Intent: the debounce moved into SearchInput because the API layer debounce also swallowed the clear-field event`
+- `Touches: every consumer of UserProfile — updated the web client, the mobile one still reads the old shape`
+- `Risk: existing cache entries have the old key format and will miss until they expire`
+
+### Poor summary lines
+
+| Line | Why it fails |
+|------|--------------|
+| `Intent: improve the code` | Says nothing a reviewer couldn't guess from the subject |
+| `Touches: various files` | The diff already lists the files; name the *consumers* |
+| `Risk: none` | Every change has one. If the developer truly named none, they have not passed Phase 4 |
+| `Intent: this commit introduces a repository-pattern abstraction to decouple persistence concerns` | Your prose, not theirs — a reviewer should hear the developer's voice |
+
+### Edge cases
+
+- **The developer hedged.** Keep the hedge: `Risk: not certain how the job queue behaves under backlog — worth watching after deploy` is a better line than a confident invention.
+- **The answer ran long.** Take the load-bearing clause, not the first sentence. One line, roughly a sentence, under ~120 characters.
+- **Several risks.** Pick the one the developer weighted most heavily. The block is an opening for review, not a full account.
+- **A trivial change that was verified anyway.** Still write all three lines; they will be short, and that is fine.
+
+Never write the block on a fail, and never write it without the `Pushback-Verified` trailer — the two go on the commit together, in one amend.

@@ -31,8 +31,24 @@ VERIFIED=0
 UNVERIFIED=0
 UNVERIFIED_LIST=""
 
-# Summary table header
-TABLE="| Status | SHA | Author | Subject |\n|--------|-----|--------|---------|\n"
+# The developer's own account of the change, one trailer line per question:
+# intent, what it touches, the known risk. Reviewers read these on the PR.
+SUMMARY_KEY="Pushback-Summary"
+
+# Fold a commit's summary lines into one markdown table cell. Pipes are escaped
+# so a line like "Touches: a | b" cannot break the table; blank lines are
+# dropped; a commit with no summary block gets an em dash.
+summary_cell() {
+  printf '%s\n' "$1" | awk '
+    { gsub(/\|/, "\\|"); if (NF == 0) next; out = (out == "" ? $0 : out "<br>" $0) }
+    END { print (out == "" ? "—" : out) }
+  '
+}
+
+# Summary table header. Rows carry real newlines rather than "\n" escapes, so
+# nothing in a commit subject or a developer's own words gets re-interpreted.
+TABLE="| Status | SHA | Author | Subject | Understanding |"
+TABLE+=$'\n'"|--------|-----|--------|---------|---------------|"$'\n'
 
 for SHA in $COMMITS; do
   TOTAL=$((TOTAL + 1))
@@ -42,16 +58,17 @@ for SHA in $COMMITS; do
 
   # Check for the Pushback-Verified trailer in the commit message
   TRAILER_VALUE=$(git log -1 --format='%(trailers:key=Pushback-Verified,valueonly)' "$SHA" | head -1)
+  UNDERSTANDING=$(summary_cell "$(git log -1 --format="%(trailers:key=${SUMMARY_KEY},valueonly)" "$SHA")")
 
   if [ -n "$TRAILER_VALUE" ]; then
     STATUS_ICON="pass"
     VERIFIED=$((VERIFIED + 1))
-    TABLE+="| :white_check_mark: | \`${SHORT}\` | ${AUTHOR} | ${SUBJECT} |\n"
+    TABLE+="| :white_check_mark: | \`${SHORT}\` | ${AUTHOR} | ${SUBJECT} | ${UNDERSTANDING} |"$'\n'
   else
     STATUS_ICON="fail"
     UNVERIFIED=$((UNVERIFIED + 1))
-    UNVERIFIED_LIST+="  - ${SHORT} ${SUBJECT}\n"
-    TABLE+="| :x: | \`${SHORT}\` | ${AUTHOR} | ${SUBJECT} |\n"
+    UNVERIFIED_LIST+="  - ${SHORT} ${SUBJECT}"$'\n'
+    TABLE+="| :x: | \`${SHORT}\` | ${AUTHOR} | ${SUBJECT} | ${UNDERSTANDING} |"$'\n'
   fi
 done
 
@@ -84,7 +101,7 @@ fi
     echo "> **Failed** — ${UNVERIFIED}/${TOTAL} commits missing verification."
   fi
   echo ""
-  echo -e "$TABLE"
+  echo "$TABLE"
   echo ""
   if [ "$REQUIRE_ALL" = "true" ]; then
     echo "_Mode: all commits required_"
@@ -101,7 +118,7 @@ echo ""
 
 if [ "$RESULT" = "fail" ]; then
   echo "Unverified commits:"
-  echo -e "$UNVERIFIED_LIST"
+  echo "$UNVERIFIED_LIST"
 
   if [ "$FAIL_ON_MISSING" = "true" ]; then
     echo "::error::Pushback verification failed. ${UNVERIFIED} commit(s) missing verification."

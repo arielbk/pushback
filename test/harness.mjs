@@ -171,6 +171,8 @@ export function createScratchRepo(options = {}) {
   // Pin hooks to this repo so a global core.hooksPath can't shadow the shim.
   must(dir, ['config', 'core.hooksPath', path.join(dir, '.git', 'hooks')]);
 
+  let summaryRuns = 0;
+
   const repo = {
     dir,
     remote,
@@ -303,6 +305,36 @@ export function createScratchRepo(options = {}) {
     /** Push without throwing — scenarios assert on status/stdout/stderr. */
     push(args = ['origin', 'main'], { env } = {}) {
       return run(dir, ['push', ...args], { env });
+    },
+
+    /**
+     * Run `action/verify-pr.sh` over a commit range in the clone, the way the
+     * composite action runs it on a pull_request event.
+     *
+     * @returns {{ status: number, stdout: string, stderr: string, summary: string }}
+     *   `summary` is what the script wrote to `$GITHUB_STEP_SUMMARY`.
+     */
+    runVerifyPr({ base, head, requireAll = false, failOnMissing = true } = {}) {
+      const summaryPath = path.join(tmp, `step-summary-${summaryRuns++}.md`);
+      fs.writeFileSync(summaryPath, '');
+      const res = spawnSync(path.join(projectRoot, 'action', 'verify-pr.sh'), [], {
+        cwd: dir,
+        encoding: 'utf8',
+        env: {
+          ...GIT_ENV,
+          PR_BASE_SHA: base,
+          PR_HEAD_SHA: head,
+          REQUIRE_ALL: String(requireAll),
+          FAIL_ON_MISSING: String(failOnMissing),
+          GITHUB_STEP_SUMMARY: summaryPath,
+        },
+      });
+      return {
+        status: res.status,
+        stdout: res.stdout,
+        stderr: res.stderr,
+        summary: fs.readFileSync(summaryPath, 'utf8'),
+      };
     },
 
     /** What the remote has for a ref, or null if it has no such ref. */
