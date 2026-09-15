@@ -103,6 +103,31 @@ process.exit(res.status === null ? 1 : res.status);
 }
 
 /**
+ * A `git` that records every invocation and delegates to the real one — except
+ * for the subcommands that talk to the remote, which it stalls. A hook that
+ * reaches for the network shows up as a hung push; one that only reads local
+ * refs is unaffected.
+ */
+function gitShimSource({ realGit, logPath, networkDelaySeconds }) {
+  return `#!/usr/bin/env node
+'use strict';
+const { spawnSync } = require('node:child_process');
+const fs = require('node:fs');
+
+const args = process.argv.slice(2);
+fs.appendFileSync(${JSON.stringify(logPath)}, JSON.stringify(args) + '\\n');
+
+const NETWORK = ['remote', 'ls-remote', 'fetch'];
+if (args.some((a) => NETWORK.includes(a))) {
+  spawnSync('sleep', ['${networkDelaySeconds}']);
+}
+
+const res = spawnSync(${JSON.stringify(realGit)}, args, { stdio: 'inherit' });
+process.exit(res.status === null ? 1 : res.status);
+`;
+}
+
+/**
  * @param {object} [options]
  * @param {object|null} [options.config] `.pushback/config.json` contents; null writes no config.
  * @param {string|null} [options.hook] pre-push hook body; null installs no hook
@@ -193,12 +218,17 @@ export function createScratchRepo(options = {}) {
       return hookPath;
     },
 
-    /** Run the local CLI build inside the clone, the way a runner would. */
-    runCli(args = [], { env } = {}) {
+    /**
+     * Run the local CLI build inside the clone, the way a runner would.
+     * `input` is piped to stdin — that is how a scenario feeds `check` the ref
+     * lines git would have given it, without going through a real push.
+     */
+    runCli(args = [], { env, input } = {}) {
       return spawnSync(process.execPath, [cliPath, ...args], {
         cwd: dir,
         encoding: 'utf8',
         env: { ...GIT_ENV, ...env },
+        input,
       });
     },
 
@@ -221,6 +251,34 @@ export function createScratchRepo(options = {}) {
       const npxPath = path.join(binDir, 'npx');
       fs.writeFileSync(npxPath, fakeNpxSource(logPath));
       fs.chmodSync(npxPath, 0o755);
+      return {
+        path: `${binDir}${path.delimiter}${process.env.PATH}`,
+        calls: () =>
+          fs
+            .readFileSync(logPath, 'utf8')
+            .split('\n')
+            .filter(Boolean)
+            .map((line) => JSON.parse(line)),
+      };
+    },
+
+    /**
+     * Put a logging `git` ahead of the real one on PATH, with the commands that
+     * open a connection to the remote made ruinously slow — the deterministic
+     * stand-in for a remote that is up but unroutable.
+     *
+     * @returns {{ path: string, calls: () => string[][] }} PATH value to pass
+     *   through `env`, plus the argv of every git invocation.
+     */
+    installGitShim({ networkDelaySeconds = 5 } = {}) {
+      const binDir = path.join(tmp, 'git-shim-bin');
+      const logPath = path.join(tmp, 'git-calls.log');
+      fs.mkdirSync(binDir, { recursive: true });
+      fs.writeFileSync(logPath, '');
+      const realGit = spawnSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).stdout.trim();
+      const gitPath = path.join(binDir, 'git');
+      fs.writeFileSync(gitPath, gitShimSource({ realGit, logPath, networkDelaySeconds }));
+      fs.chmodSync(gitPath, 0o755);
       return {
         path: `${binDir}${path.delimiter}${process.env.PATH}`,
         calls: () =>
@@ -255,6 +313,9 @@ export function createScratchRepo(options = {}) {
   if (config) repo.writeFile('.pushback/config.json', JSON.stringify(config, null, 2) + '\n');
   repo.commit('chore: seed');
   must(dir, ['push', '-u', 'origin', 'main']);
+  // A clone of a repo that already has commits gets a symbolic
+  // refs/remotes/origin/HEAD for free; ours was cloned empty, so set it here.
+  must(dir, ['remote', 'set-head', 'origin', '-a']);
 
   if (hook) repo.installHook(hook);
 

@@ -144,7 +144,7 @@ git diff @{upstream}..HEAD | shasum -a 256 | awk '{print $1}' > .pushback/verifi
 For branches with no upstream yet:
 
 ```bash
-DEFAULT=$(git remote show origin | grep 'HEAD branch' | awk '{print $NF}')
+DEFAULT=$(git symbolic-ref refs/remotes/origin/HEAD)
 git diff "$DEFAULT"..HEAD | shasum -a 256 | awk '{print $1}' > .pushback/verified
 ```
 

@@ -13,10 +13,14 @@ git diff @{upstream}..HEAD --stat
 git diff @{upstream}..HEAD
 ```
 
-If the upstream doesn't exist yet (new branch), fall back to the default branch:
+If the upstream doesn't exist yet (new branch), fall back to the remote's default
+branch. Use the remote-tracking ref, not the local branch of the same name — a
+local `main` that has drifted from the remote would otherwise change the hash and
+the hook would reject the receipt. `git symbolic-ref` is a local ref lookup; it
+does not contact the remote:
 
 ```bash
-DEFAULT=$(git remote show origin | grep 'HEAD branch' | awk '{print $NF}')
+DEFAULT=$(git symbolic-ref refs/remotes/origin/HEAD)
 git diff "$DEFAULT"..HEAD --stat
 git diff "$DEFAULT"..HEAD
 ```
@@ -76,7 +80,7 @@ git diff @{upstream}..HEAD | shasum -a 256 | awk '{print $1}' > .pushback/verifi
 For branches with no upstream:
 
 ```bash
-DEFAULT=$(git remote show origin | grep 'HEAD branch' | awk '{print $NF}')
+DEFAULT=$(git symbolic-ref refs/remotes/origin/HEAD)
 git diff "$DEFAULT"..HEAD | shasum -a 256 | awk '{print $1}' > .pushback/verified
 ```
 

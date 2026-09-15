@@ -1,7 +1,7 @@
 {
   "name": "pushback-cli",
   "version": "0.1.0",
-  "description": "Gate git push with conversational verification — ensure developers understand what they ship",
+  "description": "Gate git push with conversational verification \u2014 ensure developers understand what they ship",
   "bin": {
     "pushback": "./dist/cli.js"
   },
@@ -10,7 +10,8 @@
   ],
   "scripts": {
     "build": "tsup",
-    "test": "pnpm build && node --test test/*.test.mjs"
+    "typecheck": "tsc --noEmit",
+    "test": "pnpm build && pnpm typecheck && node --test test/*.test.mjs"
   },
   "engines": {
     "node": ">=18"
