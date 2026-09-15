@@ -4,11 +4,11 @@
 
 AI agents write code fast. The harder thing is staying engaged with what they produce: the architecture, the trade-offs, how it fits into the rest of the system.
 
-Pushback adds one checkpoint before `git push`: a short conversation. It reads your outgoing diff, asks 2-3 targeted questions, and only lets the push through when you can explain the intent behind your changes. Not a quiz. Not a checkbox. A real conversation that takes under two minutes.
+Pushback adds one checkpoint before `git push`: a short conversation. It reads your outgoing diff, asks as many targeted questions as its size warrants — one for a small change, up to three for a large one — and only lets the push through when you can explain the intent behind your changes. Not a quiz. Not a checkbox. A real conversation that takes under two minutes.
 
 Every AI tool right now is racing to remove friction. This adds a little back where it counts, so you can move at the speed of agents and still be in the driver's seat.
 
-For teams, every verified push carries a cryptographic receipt. A GitHub Action checks for it on pull requests, so the team can see at a glance that each push represents code the author engaged with.
+For teams, every verified push leaves a trailer on the commit. A GitHub Action checks for it on pull requests, so the team can see at a glance which commits the author went through Pushback for.
 
 ## Install
 
@@ -33,14 +33,25 @@ git push (from anywhere)
   → Git pre-push hook checks for a valid verification receipt
     → No receipt? Push blocked.
       → Run Pushback verification in your AI agent
-        → You answer 2-3 questions about your changes
-          → Pass → receipt written → push goes through
-          → Fail → agent points you to what to review
+        → You answer one to three questions about your changes
+          → Pass → receipt + commit trailers written → push goes through
+          → Fail → agent walks you through the diff, then asks again
 ```
 
 The receipt is a SHA-256 hash of your outgoing diff. New commits after verification change the hash, which triggers re-verification. The system is self-invalidating.
 
-The receipt lives in `.pushback/verified` and is local-only: it unblocks the pre-push hook, is gitignored, and never leaves your machine. Separately, Pushback writes a `Pushback-Verified` trailer into the commit message. That's what travels to the remote and what CI checks on pull requests. The receipt is ephemeral; the trailer is permanent.
+The receipt lives in `.pushback/verified` and is local-only: it unblocks the pre-push hook, is gitignored, and never leaves your machine. What travels to the remote is a pair of trailers Pushback amends onto the commit:
+
+```
+Pushback-Verified: <sha256-of-the-outgoing-diff>
+Pushback-Summary: Intent: stop the profile page re-querying the DB on every render
+Pushback-Summary: Touches: UserService and anything calling getProfile; adds a Redis keyspace
+Pushback-Summary: Risk: profiles can be up to 60s stale — no invalidation on write yet
+```
+
+`Pushback-Verified` is what CI checks. The `Pushback-Summary` lines are your own answers, condensed — one for why the change exists, one for what it touches, one for the risk you already know about. The action renders them on the pull request, so a reviewer opens your PR and reads your account of the change before reading the diff. The receipt is ephemeral; the trailers are permanent.
+
+Small pushes skip all of this. A change at or under `trivial_threshold.max_lines`, one that only touches ignored files like lockfiles, or a whitespace-only reformat goes straight through with no conversation and no receipt.
 
 ### What you get asked
 
@@ -72,7 +83,9 @@ jobs:
       - uses: arielbk/pushback/action@main
 ```
 
-The action reports which commits are verified and which aren't. Missing verification fails the check. The result is transparency without surveillance: every push represents code the author engaged with, not just agent output.
+The action reports which commits are verified and which aren't. Missing verification fails the check.
+
+What the check proves: the author ran the Pushback conversation against this diff, passed it, and the `Pushback-Summary` lines on the commit are their own account of the change. What it does not prove: that the answers were good, that the code is correct, or that the author rather than an agent wrote it. The trailer is not a signature — it is a plain SHA-256 of the diff, and anyone can set the override env var or add the trailer by hand. Treat it as transparency about who engaged with what, not as an enforcement mechanism.
 
 | Input | Default | Description |
 |-------|---------|-------------|

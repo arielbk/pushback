@@ -146,8 +146,8 @@ understanding of the outgoing changes yet.
 To proceed, run the Pushback skill — it will walk through the diff,
 ask about the changes (how much it asks scales with the size of the
 diff), and write a verification receipt if the developer demonstrates
-understanding. The push will succeed
-on retry once the receipt is in place.
+understanding. The push will succeed on retry once the receipt is in
+place.
 
   If you're the developer: ask your AI agent to run Pushback, or
   invoke it directly in your editor's chat.
