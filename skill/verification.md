@@ -27,13 +27,15 @@ git diff "$DEFAULT"..HEAD
 
 Read `.pushback/config.json` for thresholds if it exists.
 
-**Trivial change check — skip verification and write receipt directly if ALL of these are true:**
+**Trivial change check — skip verification and write no receipt if ANY of these is true.**
+The pre-push hook applies this same rule before it blocks anything, so a push
+like this was never gated in the first place — there is nothing to unblock:
 
-1. Total lines changed is below `trivial_threshold.max_lines` (default: 5)
-2. Every changed file matches a pattern in `trivial_threshold.ignore_patterns` (lockfiles, generated files, `.gitignore`)
-3. `git diff @{upstream}..HEAD -w` (ignoring whitespace) produces an empty diff
+1. Every changed file matches a pattern in `trivial_threshold.ignore_patterns` (lockfiles, generated files)
+2. `git diff <base>..HEAD -w` (ignoring whitespace) produces an empty diff — the change is whitespace only
+3. Changed lines outside the ignored files, counted ignoring whitespace, come to `trivial_threshold.max_lines` or fewer (default: 5)
 
-If any of these conditions is not met, proceed to Phase 2.
+If none of these holds, proceed to Phase 2.
 
 If the diff itself is empty (nothing to push), write no receipt and allow the push through — there is nothing to verify.
 

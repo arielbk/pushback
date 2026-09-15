@@ -6,6 +6,7 @@ import { gitOrNull, gitDiff } from '../lib/git.js';
 import { loadConfig } from '../lib/config.js';
 import { receiptPath, gitHooksDir } from '../lib/paths.js';
 import { parseRefLines, isNullSha, RefUpdate } from '../lib/refs.js';
+import { isTrivial } from '../lib/trivial.js';
 
 function sha256(input: string): string {
   return createHash('sha256').update(input).digest('hex');
@@ -75,27 +76,31 @@ function defaultRemoteBase(): string {
   return EMPTY_TREE;
 }
 
-/** The diff a single ref update would put on the remote. */
-function diffForRef(update: RefUpdate): string {
-  if (isNullSha(update.localSha)) return ''; // branch deletion — nothing to read
+/** The commit range a single ref update would put on the remote, if any. */
+function rangeForRef(update: RefUpdate): string | null {
+  if (isNullSha(update.localSha)) return null; // branch deletion — nothing to read
   const base = isNullSha(update.remoteSha) ? defaultRemoteBase() : update.remoteSha;
-  return gitDiff(`diff ${base}..${update.localSha}`);
+  return `${base}..${update.localSha}`;
 }
 
 /**
- * What `pushback check` hashes when it was given no ref lines — someone ran it
- * by hand rather than through the hook, so we have to guess at the destination.
+ * The ranges this push would put on the remote, in the order git listed them.
+ *
+ * With no ref lines, someone ran `pushback check` by hand rather than through
+ * the hook, so we have to guess at the destination.
  */
-function guessedOutgoingDiff(): string {
-  const base = gitOrNull('rev-parse @{upstream}') !== null ? '@{upstream}' : defaultRemoteBase();
-  return gitDiff(`diff ${base}..HEAD`);
+function outgoingRanges(stdin: string): string[] {
+  const updates = parseRefLines(stdin);
+  if (updates.length === 0) {
+    const base = gitOrNull('rev-parse @{upstream}') !== null ? '@{upstream}' : defaultRemoteBase();
+    return [`${base}..HEAD`];
+  }
+  return updates.map(rangeForRef).filter((range): range is string => range !== null);
 }
 
 /** Everything this push would put on the remote, in the order git listed it. */
-function outgoingDiff(stdin: string): string {
-  const updates = parseRefLines(stdin);
-  if (updates.length === 0) return guessedOutgoingDiff();
-  return updates.map(diffForRef).join('');
+function outgoingDiff(ranges: string[]): string {
+  return ranges.map((range) => gitDiff(`diff ${range}`)).join('');
 }
 
 export function check(): void {
@@ -107,10 +112,16 @@ export function check(): void {
     chainAndExit(stdin);
   }
 
-  const diff = outgoingDiff(stdin);
+  const ranges = outgoingRanges(stdin);
+  const diff = outgoingDiff(ranges);
 
   // Nothing to push — allow
   if (!diff) {
+    chainAndExit(stdin);
+  }
+
+  // Too small to be worth a conversation — allow
+  if (isTrivial(ranges, config.trivial_threshold)) {
     chainAndExit(stdin);
   }
 

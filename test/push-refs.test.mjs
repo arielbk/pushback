@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createScratchRepo, localBuildShim } from './harness.mjs';
+import { createScratchRepo, localBuildShim, nonTrivialSource } from './harness.mjs';
 
 const OVERRIDE = { PUSHBACK_OVERRIDE: '1' };
 
@@ -18,11 +18,11 @@ function repoWithDivergedRemoteBranch(t) {
   const seed = repo.git(['rev-parse', 'HEAD']);
   repo.push(['origin', 'main:other-branch'], { env: OVERRIDE });
 
-  repo.writeFile('src/a.js', 'export const a = 1;\n');
+  repo.writeFile('src/a.js', nonTrivialSource('a'));
   repo.commit('feat: a');
   repo.push(['origin', 'main'], { env: OVERRIDE });
 
-  repo.writeFile('src/b.js', 'export const b = 2;\n');
+  repo.writeFile('src/b.js', nonTrivialSource('b'));
   const head = repo.commit('feat: b');
 
   return { repo, seed, head };
@@ -59,16 +59,16 @@ function repoWithStaleLocalMain(t) {
   const repo = createScratchRepo();
   t.after(() => repo.cleanup());
 
-  repo.writeFile('src/a.js', 'export const a = 1;\n');
+  repo.writeFile('src/a.js', nonTrivialSource('a'));
   repo.commit('feat: a');
   repo.push(['origin', 'main'], { env: OVERRIDE });
 
   repo.git(['checkout', '-b', 'feature']);
-  repo.writeFile('src/b.js', 'export const b = 2;\n');
+  repo.writeFile('src/b.js', nonTrivialSource('b'));
   const head = repo.commit('feat: b');
 
   repo.git(['checkout', 'main']);
-  repo.writeFile('src/unpushed.js', 'export const unpushed = 3;\n');
+  repo.writeFile('src/unpushed.js', nonTrivialSource('unpushed'));
   repo.commit('feat: unpushed work on main');
   repo.git(['checkout', 'feature']);
 
@@ -100,7 +100,7 @@ test('the check does not consult the remote, so an unroutable remote cannot stal
   t.after(() => repo.cleanup());
 
   repo.git(['checkout', '-b', 'feature']);
-  repo.writeFile('src/b.js', 'export const b = 2;\n');
+  repo.writeFile('src/b.js', nonTrivialSource('b'));
   const head = repo.commit('feat: b');
   repo.git(['remote', 'set-url', 'origin', 'https://192.0.2.1/unroutable.git']);
 
@@ -140,7 +140,7 @@ test('a chained previous hook is handed the same ref lines and arguments', (t) =
   repo.installHook(localBuildShim());
 
   const before = repo.remoteSha();
-  repo.writeFile('src/app.js', 'export const answer = 42;\n');
+  repo.writeFile('src/app.js', nonTrivialSource('answer'));
   const head = repo.commit('feat: add answer');
   repo.writeReceipt(`${before}..HEAD`);
 

@@ -30,7 +30,6 @@ const GIT_ENV = {
 };
 
 const DEFAULT_CONFIG = {
-  triggers: ['push'],
   trivial_threshold: {
     max_lines: 5,
     ignore_patterns: [
@@ -44,6 +43,17 @@ const DEFAULT_CONFIG = {
   },
   override_env_var: 'PUSHBACK_OVERRIDE',
 };
+
+/**
+ * A source file with enough changed lines that Pushback's trivial-change
+ * threshold will not wave it through. Scenarios about the gate itself need a
+ * diff that is actually worth a conversation.
+ */
+export function nonTrivialSource(name, lines = 12) {
+  return (
+    Array.from({ length: lines }, (_, i) => `export const ${name}${i} = ${i};`).join('\n') + '\n'
+  );
+}
 
 /** The shim a real install writes, but pointed at this working tree's build. */
 export function localBuildShim() {

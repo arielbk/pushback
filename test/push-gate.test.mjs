@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createScratchRepo } from './harness.mjs';
+import { createScratchRepo, nonTrivialSource } from './harness.mjs';
 
 test('push is blocked when no receipt exists', (t) => {
   const repo = createScratchRepo();
   t.after(() => repo.cleanup());
 
-  repo.writeFile('src/app.js', 'export const answer = 42;\n');
+  repo.writeFile('src/app.js', nonTrivialSource('answer'));
   repo.commit('feat: add answer');
 
   const push = repo.push();
@@ -19,7 +19,7 @@ test('push passes when the receipt matches the outgoing diff', (t) => {
   const repo = createScratchRepo();
   t.after(() => repo.cleanup());
 
-  repo.writeFile('src/app.js', 'export const answer = 42;\n');
+  repo.writeFile('src/app.js', nonTrivialSource('answer'));
   const sha = repo.commit('feat: add answer');
   repo.writeReceipt();
 

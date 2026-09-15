@@ -85,7 +85,6 @@ The action reports which commits are verified and which aren't. Missing verifica
 
 ```json
 {
-  "triggers": ["push"],
   "trivial_threshold": {
     "max_lines": 5,
     "ignore_patterns": ["*.lock", "*.lockb", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "*.generated.*"]
@@ -96,9 +95,8 @@ The action reports which commits are verified and which aren't. Missing verifica
 
 | Field | Default | What it does |
 |-------|---------|-------------|
-| `triggers` | `["push"]` | Which git commands trigger verification. Add `"commit"` to also gate commits. |
-| `trivial_threshold.max_lines` | `5` | Changes below this skip verification automatically. |
-| `trivial_threshold.ignore_patterns` | lockfiles, generated | Files that are always considered trivial. |
+| `trivial_threshold.max_lines` | `5` | Pushes changing this many lines or fewer skip verification automatically. |
+| `trivial_threshold.ignore_patterns` | lockfiles, generated | Files that never count towards the line budget. A push touching only these skips verification. |
 | `override_env_var` | `PUSHBACK_OVERRIDE` | Env var that bypasses verification when set. |
 
 **Override** (emergencies only):

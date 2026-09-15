@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createScratchRepo } from './harness.mjs';
+import { createScratchRepo, nonTrivialSource } from './harness.mjs';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -15,7 +15,7 @@ test('the installed hook reaches Pushback in a clone with no pushback-cli instal
   assert.equal(install.status, 0, `expected install to succeed:\n${install.stderr}`);
 
   const npx = repo.installFakeNpx();
-  repo.writeFile('src/app.js', 'export const answer = 42;\n');
+  repo.writeFile('src/app.js', nonTrivialSource('answer'));
   repo.commit('feat: add answer');
 
   const push = repo.push(['origin', 'main'], { env: { PATH: npx.path } });
@@ -46,7 +46,7 @@ test('setup installs the same resolvable hook on a repo with no Pushback yet', (
   assert.equal(setup.status, 0, `expected setup to succeed:\n${setup.stderr}`);
 
   const npx = repo.installFakeNpx();
-  repo.writeFile('src/app.js', 'export const answer = 42;\n');
+  repo.writeFile('src/app.js', nonTrivialSource('answer'));
   repo.commit('feat: add answer');
 
   const push = repo.push(['origin', 'main'], { env: { PATH: npx.path } });
@@ -70,7 +70,7 @@ test('install upgrades an already-installed hook that still uses the bare form',
   assert.equal(install.status, 0, `expected install to succeed:\n${install.stderr}`);
 
   const npx = repo.installFakeNpx();
-  repo.writeFile('src/app.js', 'export const answer = 42;\n');
+  repo.writeFile('src/app.js', nonTrivialSource('answer'));
   repo.commit('feat: add answer');
 
   const push = repo.push(['origin', 'main'], { env: { PATH: npx.path } });
