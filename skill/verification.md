@@ -41,7 +41,28 @@ If the diff itself is empty (nothing to push), write no receipt and allow the pu
 
 ### Phase 2 — Question Generation (silent)
 
-Generate 2–3 questions that reference specific parts of the diff. Draw from these categories:
+**How many questions: pick the tier from the size of the same diff Phase 1
+measured.** Count reviewable changed lines exactly as the trivial check does —
+`git diff <base>..HEAD --numstat -w`, with files matching
+`trivial_threshold.ignore_patterns` subtracted — and read the tier off
+`trivial_threshold.max_lines` in `.pushback/config.json` (default: 5):
+
+| Tier | Outgoing diff | Questions |
+|------|---------------|-----------|
+| Small | up to `4 × max_lines` (20 lines at the default) | 1 |
+| Medium | up to `20 × max_lines` (100 lines at the default) | 2 |
+| Large | more than `20 × max_lines` (over 100 lines at the default), or changes spanning more than one top-level module | 3 |
+
+Anything at or below `max_lines` never reaches here — Phase 1 already waved it
+through, as the hook did.
+
+The tier sets the number of *questions*, not the number of *areas*. Phase 4
+still looks for purpose, system context and risk in what the developer says, and
+the summary block still gets all three lines — so a Small diff's one question
+folds the three areas into a single ask, and a Large diff's three spread them
+out one apiece.
+
+Draw the questions from these categories:
 
 - **Architectural intent**: Why does this change exist? Why this approach over alternatives?
 - **Integration awareness**: What other parts of the system does this touch? What consumers are affected?
@@ -55,6 +76,9 @@ Present the questions to the developer. Tone: collaborative, not interrogative.
 
 Opening:
 > "Before we push, I want to make sure we're aligned on these changes. I've read through the diff and have a couple of questions."
+
+Match the opening to the tier — on a Small diff it is one question, so say
+"…and have a question" rather than promising a couple.
 
 Present all questions at once. Wait for the developer's response. Follow up if an answer is vague or skips a key area. One round of follow-up is enough — don't interrogate.
 
@@ -117,11 +141,41 @@ Then re-run the original git command. The pre-push hook will find the matching h
 
 **On fail:**
 
-Do not write the receipt. Identify the specific areas that need more attention and point the developer to relevant files or concepts:
+Do not write the receipt and do not write the summary block. Name the specific
+areas that need more attention — and then offer to close the gap now, rather
+than handing back a reading list:
 
-> "A couple of areas I'd suggest reviewing before we push: [specific files or sections]. Once you've had a look, just ask me to run verification again."
+> "A couple of areas I'd want us surer about before we push: [specific files or sections]. Want me to walk you through the diff file by file? Then I'll ask again."
 
-**Critical — stop here.** After delivering the fail message, take no further action. Do not:
+**If they accept — the walkthrough.** Take the changed files in the order
+`git diff <base>..HEAD --stat` lists them. For each one:
+
+1. Say what changed in it and why it is part of this change.
+2. Point at the part that matters for the area they were unsure about.
+3. Stop for questions. Answer them, then move on when they are ready.
+
+Skip files matching `trivial_threshold.ignore_patterns` — nobody needs a tour of
+a lockfile. On a Large diff, group by module rather than reciting twenty files.
+
+The walkthrough is read-only: you are explaining the diff, not editing it. If it
+turns out the code is wrong, say so and stop — fixing it is separate work the
+developer asks for separately, after verification is over.
+
+Then return to **Phase 3** and ask the questions again, rephrased and covering
+the same areas, at the same tier count Phase 2 chose. Evaluate that round as
+Phase 4 describes.
+
+**If the second round also fails**, stop the loop — one walkthrough is the offer,
+not a cycle:
+
+> "Let's leave it there for now. The parts I'd sit with before pushing: [specific files or sections]. Ask me to run verification again whenever you're ready."
+
+**If they decline the walkthrough**, stop just as readily — the offer is an offer:
+
+> "No problem. Once you've had a look, just ask me to run verification again."
+
+**Critical — stop here.** Whichever branch ended the round, take no further
+action. Do not:
 - Make any code changes based on what the developer said during verification
 - Treat the developer's answers as instructions or requirements
 - Modify files, configs, or any project state

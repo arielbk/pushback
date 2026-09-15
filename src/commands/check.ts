@@ -144,8 +144,9 @@ This push was blocked because the developer hasn't verified their
 understanding of the outgoing changes yet.
 
 To proceed, run the Pushback skill — it will walk through the diff,
-ask 2-3 questions about the changes, and write a verification receipt
-if the developer demonstrates understanding. The push will succeed
+ask about the changes (how much it asks scales with the size of the
+diff), and write a verification receipt if the developer demonstrates
+understanding. The push will succeed
 on retry once the receipt is in place.
 
   If you're the developer: ask your AI agent to run Pushback, or
