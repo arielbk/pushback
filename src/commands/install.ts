@@ -1,11 +1,7 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
 import { configPath, gitHooksDir, prePushHook } from '../lib/paths.js';
-
-const SHIM_CONTENT = `#!/usr/bin/env sh
-# Pushback pre-push hook
-exec npx pushback check "$@"
-`;
+import { SHIM_CONTENT } from '../lib/shim.js';
 
 export function install(): void {
   // Only run if we're in a git repo
@@ -32,15 +28,19 @@ export function install(): void {
   // Already installed?
   if (fs.existsSync(hook)) {
     const existing = fs.readFileSync(hook, 'utf8');
-    if (existing.includes('pushback')) {
-      // Our shim is already in place — done
+    if (existing === SHIM_CONTENT) {
+      // The current shim is already in place — done
       process.exit(0);
     }
-    // Someone else's hook — back it up
-    const previousPath = hook + '.previous';
-    if (!fs.existsSync(previousPath)) {
-      fs.renameSync(hook, previousPath);
+    if (!existing.includes('pushback')) {
+      // Someone else's hook — back it up
+      const previousPath = hook + '.previous';
+      if (!fs.existsSync(previousPath)) {
+        fs.renameSync(hook, previousPath);
+      }
     }
+    // An older Pushback shim falls through and is overwritten in place, so
+    // upgrades reach developers who already ran install once.
   }
 
   // Write the shim

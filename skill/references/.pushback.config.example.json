@@ -1,5 +1,4 @@
 {
-  "triggers": ["push"],
   "trivial_threshold": {
     "max_lines": 5,
     "ignore_patterns": [

@@ -9,11 +9,7 @@ import {
   prePushHook,
   gitignorePath,
 } from '../lib/paths.js';
-
-const SHIM_CONTENT = `#!/usr/bin/env sh
-# Pushback pre-push hook
-exec npx pushback check "$@"
-`;
+import { SHIM_CONTENT } from '../lib/shim.js';
 
 const WORKFLOW_YAML = `name: Pushback Verification
 

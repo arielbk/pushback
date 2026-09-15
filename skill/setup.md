@@ -50,13 +50,13 @@ yarn pushback setup
 bunx pushback setup
 
 # npm
-npx pushback setup
+npx --package pushback-cli pushback setup
 ```
 
 5. If there is no existing Node package-manager context, do not create one just to install Pushback. Use `npx` as the fallback transport and run setup remotely:
 
 ```bash
-npx pushback setup
+npx --package pushback-cli pushback setup
 ```
 
 The setup command creates the `.pushback/` directory, writes a default config, adds the receipt to `.gitignore`, installs the git hook shim, and sets up the GitHub Action workflow. The hook gates all pushes — from the terminal, IDE, or AI agent.
@@ -74,8 +74,12 @@ yarn pushback install
 bunx pushback install
 
 # npm or non-Node fallback
-npx pushback install
+npx --package pushback-cli pushback install
 ```
+
+The `--package pushback-cli` flag is load-bearing for the `npx` form: without it npm
+infers the package from the bin name and resolves the unrelated `pushback` package,
+which ships no `pushback` executable.
 
 ## Hook Persistence
 
@@ -84,7 +88,7 @@ After setup, make sure teammates will get the hook automatically when they clone
 - pnpm: `pnpm exec`
 - yarn: `yarn`
 - bun: `bunx`
-- npm or non-Node fallback: `npx`
+- npm or non-Node fallback: `npx --package pushback-cli`
 
 Look at what the project already uses and integrate accordingly:
 
@@ -92,7 +96,7 @@ Look at what the project already uses and integrate accordingly:
 - **lefthook** (`lefthook.yml` or `.lefthook.yml` exists): Add a `pushback` command under the `pre-push` section with `run: {runner} pushback check`. If a `pre-push:` block already exists, merge into it — don't create a duplicate top-level key.
 - **Other hook managers**: Read their docs/config and add the equivalent pre-push entry. The command to run is always `{runner} pushback check`.
 - **No hook manager, but has `package.json`**: Add `{runner} pushback install` to the `prepare` script. If a `prepare` script already exists, append with `&&`. The install command is lightweight and silent — it just installs the git hook shim.
-- **No hook manager, no `package.json`**: Note that teammates will need Node and `npx`, and will need to run `npx pushback install` manually after cloning.
+- **No hook manager, no `package.json`**: Note that teammates will need Node and `npx`, and will need to run `npx --package pushback-cli pushback install` manually after cloning.
 
 Check that whatever you've added doesn't duplicate existing Pushback entries (look for `.pushback` in the relevant config). If the project uses a hook manager that sets `core.hooksPath` (like Husky), the setup script's `.git/hooks/pre-push` shim won't run — the hook manager's integration is what actually gates pushes.
 
@@ -100,4 +104,4 @@ Check that whatever you've added doesn't duplicate existing Pushback entries (lo
 
 - Verification workflow: `verification.md`
 - Config defaults: `references/.pushback.config.example.json`
-- CLI package: `pushback-cli` (`pushback setup`, `pushback install`, `pushback check` via the detected runner, or `npx` as fallback)
+- CLI package: `pushback-cli` (`pushback setup`, `pushback install`, `pushback check` via the detected runner, or `npx --package pushback-cli` as fallback)

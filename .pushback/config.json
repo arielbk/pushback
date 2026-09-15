@@ -1,0 +1,14 @@
+{
+  "trivial_threshold": {
+    "max_lines": 5,
+    "ignore_patterns": [
+      "*.lock",
+      "*.lockb",
+      "package-lock.json",
+      "yarn.lock",
+      "pnpm-lock.yaml",
+      "*.generated.*"
+    ]
+  },
+  "override_env_var": "PUSHBACK_OVERRIDE"
+}

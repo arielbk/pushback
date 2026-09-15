@@ -17,7 +17,7 @@ When this skill is invoked, first determine whether the developer needs setup or
 If you are not sure which path applies, first check whether Pushback is installed:
 
 ```bash
-test -f .git/hooks/pre-push && grep -q '.pushback' .git/hooks/pre-push && echo "installed" || echo "not installed"
+test -f .git/hooks/pre-push && grep -q 'pushback check' .git/hooks/pre-push && echo "installed" || echo "not installed"
 ```
 
 - `installed` -> read `verification.md`

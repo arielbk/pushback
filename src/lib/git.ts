@@ -1,7 +1,13 @@
-import { execSync } from 'child_process';
+import { execSync, ExecSyncOptionsWithStringEncoding } from 'child_process';
+
+/** Git's own chatter belongs in the hook's output only when we choose to show it. */
+const QUIET: ExecSyncOptionsWithStringEncoding = {
+  encoding: 'utf8',
+  stdio: ['ignore', 'pipe', 'ignore'],
+};
 
 export function git(cmd: string): string {
-  return execSync(`git ${cmd}`, { encoding: 'utf8' }).trim();
+  return execSync(`git ${cmd}`, QUIET).trim();
 }
 
 export function gitOrNull(cmd: string): string | null {
@@ -15,7 +21,7 @@ export function gitOrNull(cmd: string): string | null {
 /** Raw execSync for diff — don't trim, hash must match exact output */
 export function gitDiff(cmd: string): string {
   try {
-    return execSync(`git ${cmd}`, { encoding: 'utf8' });
+    return execSync(`git ${cmd}`, QUIET);
   } catch {
     return '';
   }
