@@ -1,9 +1,9 @@
 {
   "name": "pushback-cli",
   "version": "0.2.0",
-  "description": "Gate git push with conversational verification \u2014 ensure developers understand what they ship",
+  "description": "Gate git push with conversational verification — ensure developers understand what they ship",
   "bin": {
-    "pushback": "./dist/cli.js"
+    "pushback": "dist/cli.js"
   },
   "files": [
     "dist"
@@ -24,7 +24,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/arielbk/pushback.git"
+    "url": "git+https://github.com/arielbk/pushback.git"
   },
   "keywords": [
     "git",
